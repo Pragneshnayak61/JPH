@@ -7,9 +7,12 @@
           Decide who can work on tickets and what they are allowed to do
         </p>
       </div>
-      <Button variant="subtle" @click="showHelp = !showHelp">
-        How do I add someone?
-      </Button>
+      <div class="flex gap-2">
+        <Button variant="subtle" @click="showHelp = !showHelp">Help</Button>
+        <Button v-if="auth.isAdmin" variant="solid" @click="openAdd">
+          Add person
+        </Button>
+      </div>
     </div>
 
     <div
@@ -31,9 +34,9 @@
         </li>
       </ol>
       <p class="mt-3 text-p-sm text-ink-gray-6">
-        Sending an invite email directly from this page needs a small
-        server-side function, because creating accounts requires a secret key
-        that can never live in the browser.
+        Or use <strong>Add person</strong> above to create the account for
+        them. You set a temporary password and share it with them &mdash;
+        there is no email set up yet, so nothing is sent automatically.
       </p>
     </div>
 
@@ -170,6 +173,80 @@
     </p>
 
     <ErrorMessage :message="roleError" class="mt-3" />
+
+    <!-- Add person -->
+    <Dialog
+      v-model="showAdd"
+      :options="{ title: 'Add person', size: 'md' }"
+    >
+      <template #body-content>
+        <div class="space-y-3">
+          <FormControl
+            v-model="form.full_name"
+            label="Full name"
+            placeholder="Priya Sharma"
+            :disabled="creating"
+          />
+          <FormControl
+            v-model="form.email"
+            type="email"
+            label="Email"
+            placeholder="priya@company.com"
+            :disabled="creating"
+          />
+          <div>
+            <FormControl
+              v-model="form.password"
+              label="Temporary password"
+              :disabled="creating"
+            />
+            <div class="mt-1 flex items-center justify-between">
+              <p class="text-p-sm text-ink-gray-5">At least 8 characters</p>
+              <button
+                class="text-p-sm text-ink-gray-6 underline"
+                @click="form.password = randomPassword()"
+              >
+                Generate
+              </button>
+            </div>
+          </div>
+          <FormControl
+            v-model="form.kind"
+            type="select"
+            label="Access"
+            :options="kindOptions"
+            :disabled="creating"
+          />
+          <FormControl
+            v-if="form.kind !== 'customer'"
+            v-model="form.role_id"
+            type="select"
+            label="Role"
+            :options="roleOptions"
+            :disabled="creating"
+          />
+
+          <div
+            class="rounded-lg border border-outline-amber-2 bg-surface-amber-1 p-3 text-p-sm text-ink-gray-7"
+          >
+            Email is not set up yet, so no invite is sent. Share this password
+            with them yourself, and over something safer than plain email.
+          </div>
+
+          <ErrorMessage :message="createError" />
+        </div>
+      </template>
+      <template #actions>
+        <Button
+          variant="solid"
+          class="w-full"
+          :loading="creating"
+          @click="createPerson"
+        >
+          Create account
+        </Button>
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -177,9 +254,9 @@
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth";
 import {
-  Avatar, Badge, Button, ErrorMessage, FormControl, LoadingIndicator,
+  Avatar, Badge, Button, Dialog, ErrorMessage, FormControl, LoadingIndicator,
 } from "frappe-ui";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 
 const auth = useAuthStore();
 
@@ -294,6 +371,71 @@ async function togglePerm(r: Role, key: string, value: boolean) {
   // Agar apne hi role ki permission badli hai to store refresh karo,
   // warna UI purani permissions ke hisaab se chalti rahegi.
   if (auth.profile?.role_id === r.id) await auth.loadProfile();
+}
+
+// ---------------------------------------------------------------- add person
+const showAdd = ref(false);
+const creating = ref(false);
+const createError = ref("");
+const form = reactive({
+  full_name: "", email: "", password: "", kind: "agent", role_id: "",
+});
+
+function randomPassword() {
+  // crypto se, Math.random se nahi — Math.random predictable hota hai
+  // aur ye password kisi ke account ka pehla taala banega.
+  const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$";
+  const bytes = crypto.getRandomValues(new Uint32Array(16));
+  return Array.from(bytes, (b) => chars[b % chars.length]).join("");
+}
+
+function openAdd() {
+  createError.value = "";
+  form.full_name = "";
+  form.email = "";
+  form.password = randomPassword();
+  form.kind = "agent";
+  form.role_id = roles.value.find((r) => r.name === "Agent")?.id ?? "";
+  showAdd.value = true;
+}
+
+async function createPerson() {
+  createError.value = "";
+  if (!form.email.trim()) return (createError.value = "Please enter an email");
+  if (form.password.length < 8)
+    return (createError.value = "Password must be at least 8 characters");
+
+  creating.value = true;
+  try {
+    // Edge function chahiye — user banane wali key browser me nahi rakh sakte.
+    const { data, error } = await supabase.functions.invoke("create-user", {
+      body: {
+        email: form.email.trim(),
+        password: form.password,
+        full_name: form.full_name.trim(),
+        kind: form.kind,
+        role_id: form.role_id || null,
+      },
+    });
+    // functions.invoke non-2xx par error deta hai par body nigal jaata hai,
+    // isliye asli message nikalne ki koshish karte hain — warna user ko
+    // sirf "Edge Function returned a non-2xx status code" dikhta hai.
+    if (error) {
+      const ctx = (error as any).context;
+      const msg = ctx && typeof ctx.json === "function"
+        ? (await ctx.json().catch(() => null))?.error
+        : null;
+      throw new Error(msg || error.message);
+    }
+    if ((data as any)?.error) throw new Error((data as any).error);
+
+    showAdd.value = false;
+    await load();
+  } catch (e: any) {
+    createError.value = e?.message || "Could not create the account";
+  } finally {
+    creating.value = false;
+  }
 }
 
 onMounted(load);
