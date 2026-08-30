@@ -23,6 +23,19 @@
             />
 
             <div>
+              <FormControl
+                v-model="form.legal_name"
+                label="Legal name (for the footer)"
+                placeholder="JPH Technologies Pvt Ltd"
+                :disabled="saving"
+              />
+              <p class="mt-1 text-p-sm text-ink-gray-5">
+                Shown in the copyright line. Leave blank to use the company
+                name above.
+              </p>
+            </div>
+
+            <div>
               <FormLabel label="Logo" />
               <div class="mt-1 flex items-center gap-3">
                 <div

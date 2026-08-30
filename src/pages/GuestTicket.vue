@@ -109,33 +109,58 @@
       </div>
 
       <!-- team: naam nahi, sirf kaam -->
-      <div v-if="team.length" class="mt-8">
-        <h2 class="text-p-base font-medium text-ink-gray-8">
+      <div v-if="team.length" class="mt-10">
+        <h2 class="text-p-base font-semibold text-ink-gray-8">
           Who picks this up
         </h2>
         <p class="mt-0.5 text-p-sm text-ink-gray-6">
           Our team, by what they handle
         </p>
-        <div class="mt-3 grid gap-2 sm:grid-cols-2">
+
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
           <div
             v-for="m in team"
             :key="m.code"
-            class="rounded-lg border border-outline-gray-2 bg-surface-base p-3"
+            class="rounded-xl border border-outline-gray-2 bg-surface-base p-4 transition-shadow hover:shadow-sm"
           >
-            <div class="flex items-center gap-2">
+            <div class="flex items-start gap-3">
               <span
-                class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-p-sm font-medium text-white"
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-p-sm font-semibold text-white"
                 :style="{ background: s.accent_color }"
               >
-                {{ m.code.replace(/[^0-9]/g, "") || "?" }}
+                {{ initials(m) }}
               </span>
-              <p class="truncate text-p-base font-medium text-ink-gray-8">
-                {{ m.specialization || m.code }}
-              </p>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-p-base font-medium text-ink-gray-9">
+                  {{ m.specialization || "Support" }}
+                </p>
+                <p class="text-p-sm text-ink-gray-5">{{ m.code }}</p>
+              </div>
             </div>
-            <p v-if="m.mastery" class="mt-1.5 text-p-sm text-ink-gray-6">
+
+            <p v-if="m.mastery" class="mt-3 text-p-sm leading-relaxed text-ink-gray-7">
               {{ m.mastery }}
             </p>
+
+            <!-- Ye do sirf tab dikhte hain jab value ho. Khali "0 tickets"
+                 ya "0 years" dikhana ulta bharosa ghatata hai. -->
+            <div
+              v-if="m.resolved_count || m.experience_years"
+              class="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-outline-gray-2 pt-3"
+            >
+              <span v-if="m.resolved_count" class="text-p-sm text-ink-gray-6">
+                <strong class="font-semibold text-ink-gray-8">
+                  {{ m.resolved_count }}
+                </strong>
+                {{ m.resolved_count === 1 ? "ticket" : "tickets" }} resolved
+              </span>
+              <span v-if="m.experience_years" class="text-p-sm text-ink-gray-6">
+                <strong class="font-semibold text-ink-gray-8">
+                  {{ m.experience_years }}
+                </strong>
+                {{ m.experience_years === 1 ? "year" : "years" }} experience
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -144,6 +169,8 @@
         Already have an account?
         <RouterLink to="/login" class="underline">Sign in</RouterLink>
       </p>
+
+      <SiteFooter />
     </div>
   </div>
 </template>
@@ -152,6 +179,7 @@
 import { getMyTickets, rememberTicket } from "@/lib/myTickets";
 import { notify } from "@/lib/notify";
 import { uploadImage } from "@/lib/uploadImage";
+import SiteFooter from "@/components/SiteFooter.vue";
 import { useSettingsStore } from "@/stores/settings";
 import { supabase } from "@/lib/supabase";
 import {
@@ -185,9 +213,24 @@ const settingsStore = useSettingsStore();
 const s = computed(() => settingsStore.settings);
 
 const myTickets = ref(getMyTickets());
-const team = ref<
-  { code: string; specialization: string | null; mastery: string | null }[]
->([]);
+type TeamMember = {
+  code: string;
+  specialization: string | null;
+  mastery: string | null;
+  experience_years: number | null;
+  resolved_count: number;
+};
+const team = ref<TeamMember[]>([]);
+
+/**
+ * Badge par kya likhein. Specialization ka pehla akshar sabse kaam ka
+ * hai ("N" for Network) — ID ka number us se kam batata hai.
+ */
+function initials(m: TeamMember) {
+  const src = m.specialization?.trim();
+  if (src) return src.charAt(0).toUpperCase();
+  return m.code.replace(/[^0-9]/g, "") || "?";
+}
 onMounted(async () => {
   myTickets.value = getMyTickets();
   settingsStore.load();

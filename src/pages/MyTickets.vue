@@ -63,11 +63,14 @@
           </button>
         </div>
       </template>
+
+      <SiteFooter />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import SiteFooter from "@/components/SiteFooter.vue";
 import { forgetTickets, getMyTickets } from "@/lib/myTickets";
 import { Button, FeatherIcon } from "frappe-ui";
 import { onMounted, ref } from "vue";

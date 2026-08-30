@@ -62,6 +62,14 @@
             placeholder="Firewalls, VPN setup, office Wi-Fi, printer networking"
             :disabled="saving"
           />
+
+          <FormControl
+            v-model="form.experience_years"
+            type="number"
+            label="Years of experience"
+            placeholder="6"
+            :disabled="saving"
+          />
         </div>
       </section>
 
@@ -78,9 +86,9 @@
               Show me on the support page
             </span>
             <span class="mt-0.5 block text-p-sm text-ink-gray-6">
-              Customers will see your ID, specialization and what you handle
-              &mdash; never your name or email. It helps them see that someone
-              who knows their problem is on the team.
+              Customers will see your ID, specialization, what you handle,
+              your years of experience and how many tickets you have resolved
+              &mdash; never your name or email.
             </span>
           </span>
         </label>
@@ -114,19 +122,21 @@ const form = reactive({
   full_name: "",
   specialization: "",
   mastery: "",
+  experience_years: "" as string | number,
   show_publicly: false,
 });
 
 onMounted(async () => {
   const { data } = await supabase
     .from("profiles")
-    .select("full_name, specialization, mastery, show_publicly")
+    .select("full_name, specialization, mastery, experience_years, show_publicly")
     .eq("id", auth.profile?.id ?? "")
     .single();
   if (data) {
     form.full_name = data.full_name ?? "";
     form.specialization = data.specialization ?? "";
     form.mastery = data.mastery ?? "";
+    form.experience_years = data.experience_years ?? "";
     form.show_publicly = data.show_publicly ?? false;
   }
   loading.value = false;
@@ -145,6 +155,10 @@ async function save() {
         full_name: form.full_name.trim() || null,
         specialization: form.specialization.trim() || null,
         mastery: form.mastery.trim() || null,
+        // Khali chhodne par null — "" bhejte to number column par error
+        // aata, aur 0 bhejte to card par "0 years" chhap jaata.
+        experience_years:
+          form.experience_years === "" ? null : Number(form.experience_years),
         show_publicly: form.show_publicly,
       })
       .eq("id", auth.profile?.id ?? "");
