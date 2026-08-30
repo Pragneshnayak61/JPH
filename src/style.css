@@ -1,0 +1,19 @@
+/* NOTE: "frappe-ui/style.css" hi sahi path hai.
+   "frappe-ui/src/style.css" likhne par build fail hoti hai —
+   package ka exports field use allow nahi karta. */
+@import "frappe-ui/style.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  @apply bg-surface-base text-ink-gray-8;
+  font-feature-settings: "cv10";
+}
