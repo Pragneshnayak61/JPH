@@ -47,6 +47,15 @@
           />
 
           <FormControl
+            v-if="categories.length"
+            v-model="form.category_id"
+            type="select"
+            label="Category"
+            :options="categoryOptions"
+            :disabled="submitting"
+          />
+
+          <FormControl
             v-model="form.subject"
             label="Subject"
             placeholder="One line about the problem"
@@ -202,6 +211,7 @@ const form = reactive({
   email: "",
   company_name: "",
   subject: "",
+  category_id: "",
   priority: "medium",
   description: "",
 });
@@ -221,6 +231,13 @@ type TeamMember = {
   resolved_count: number;
 };
 const team = ref<TeamMember[]>([]);
+const categories = ref<{ id: string; name: string }[]>([]);
+const categoryOptions = computed(() => [
+  // Pehla option khali — customer ko category chunne par majboor nahi
+  // karna chahiye. Wo galat chun le, isse behtar hai khali chhod de.
+  { label: "Not sure", value: "" },
+  ...categories.value.map((c) => ({ label: c.name, value: c.id })),
+]);
 
 /**
  * Badge par kya likhein. Specialization ka pehla akshar sabse kaam ka
@@ -236,8 +253,16 @@ onMounted(async () => {
   settingsStore.load();
   // Team na aaye to section chhupa rehta hai — koi error nahi dikhate,
   // ye page ka zaroori hissa nahi hai.
-  const { data } = await supabase.rpc("public_team");
-  team.value = data ?? [];
+  const [{ data: t }, { data: c }] = await Promise.all([
+    supabase.rpc("public_team"),
+    supabase
+      .from("ticket_categories")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("sort_order"),
+  ]);
+  team.value = t ?? [];
+  categories.value = c ?? [];
 });
 
 function validate(): string {
@@ -273,6 +298,8 @@ async function submit() {
       p_subject: form.subject.trim(),
       p_description: form.description,
       p_priority: form.priority,
+      // khali string nahi, null — uuid column "" nahi le sakta
+      p_category_id: form.category_id || null,
     });
 
     if (err) throw err;

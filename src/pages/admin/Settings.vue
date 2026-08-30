@@ -36,6 +36,19 @@
             </div>
 
             <div>
+              <FormControl
+                v-model="form.contact_email"
+                type="email"
+                label="Contact email (for the footer)"
+                placeholder="support@jph.com"
+                :disabled="saving"
+              />
+              <p class="mt-1 text-p-sm text-ink-gray-5">
+                Shown under the copyright line. Leave blank to hide it.
+              </p>
+            </div>
+
+            <div>
               <FormLabel label="Logo" />
               <div class="mt-1 flex items-center gap-3">
                 <div
@@ -138,6 +151,54 @@
           </div>
         </section>
 
+        <section class="rounded-lg border border-outline-gray-2 p-4">
+          <h2 class="text-p-base font-medium text-ink-gray-8">
+            Ticket categories
+          </h2>
+          <p class="mt-0.5 text-p-sm text-ink-gray-6">
+            Shown as a dropdown on the support form
+          </p>
+
+          <div class="mt-3 space-y-2">
+            <div
+              v-for="c in categories"
+              :key="c.id"
+              class="flex items-center gap-2"
+            >
+              <FormControl
+                class="flex-1"
+                :model-value="c.name"
+                :disabled="savingCat === c.id"
+                @change="(e: any) => renameCategory(c, e.target.value)"
+              />
+              <button
+                class="text-p-sm text-ink-gray-6 underline hover:text-ink-gray-8"
+                :disabled="savingCat === c.id"
+                @click="toggleCategory(c)"
+              >
+                {{ c.is_active ? "Hide" : "Show" }}
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-3 flex gap-2">
+            <FormControl
+              v-model="newCategory"
+              class="flex-1"
+              placeholder="New category"
+              @keyup.enter="addCategory"
+            />
+            <Button :disabled="!newCategory.trim()" @click="addCategory">
+              Add
+            </Button>
+          </div>
+          <p class="mt-2 text-p-sm text-ink-gray-5">
+            Hiding a category keeps it on old tickets but removes it from the
+            form.
+          </p>
+          <ErrorMessage :message="catError" class="mt-2" />
+        </section>
+
         <div class="flex items-center gap-3">
           <Button variant="solid" :loading="saving" @click="save">
             Save changes
@@ -218,8 +279,69 @@ const uploadError = ref("");
 const savedAt = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
+// ---------------------------------------------------------------- categories
+type Category = { id: string; name: string; is_active: boolean; sort_order: number };
+const categories = ref<Category[]>([]);
+const newCategory = ref("");
+const catError = ref("");
+const savingCat = ref<string | null>(null);
+
+async function loadCategories() {
+  const { data } = await supabase
+    .from("ticket_categories")
+    .select("id, name, is_active, sort_order")
+    .order("sort_order");
+  categories.value = data ?? [];
+}
+
+async function addCategory() {
+  const name = newCategory.value.trim();
+  if (!name) return;
+  catError.value = "";
+  // Sabse bade sort_order se aage. Naya item hamesha neeche jaana chahiye,
+  // warna list ka kram har baar badalta rehta.
+  const next = Math.max(0, ...categories.value.map((c) => c.sort_order)) + 10;
+  const { error } = await supabase
+    .from("ticket_categories")
+    .insert({ name, sort_order: next });
+  if (error) {
+    catError.value = error.message;
+    return;
+  }
+  newCategory.value = "";
+  await loadCategories();
+}
+
+async function renameCategory(c: Category, name: string) {
+  const next = name.trim();
+  if (!next || next === c.name) return;
+  savingCat.value = c.id;
+  catError.value = "";
+  const { error } = await supabase
+    .from("ticket_categories")
+    .update({ name: next })
+    .eq("id", c.id);
+  savingCat.value = null;
+  if (error) catError.value = error.message;
+  await loadCategories();
+}
+
+async function toggleCategory(c: Category) {
+  savingCat.value = c.id;
+  // Delete jaan-boojh kar nahi diya. Category hataane par purane tickets
+  // ka category_id null ho jaata aur wo jaankari hamesha ke liye chali
+  // jaati. Hide karne se form se hat jaati hai, record bacha rehta hai.
+  const { error } = await supabase
+    .from("ticket_categories")
+    .update({ is_active: !c.is_active })
+    .eq("id", c.id);
+  savingCat.value = null;
+  if (error) catError.value = error.message;
+  await loadCategories();
+}
+
 onMounted(async () => {
-  await store.load(true);
+  await Promise.all([store.load(true), loadCategories()]);
   form.value = { ...store.settings };
   loading.value = false;
 });

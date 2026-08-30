@@ -5,6 +5,7 @@ import { ref } from "vue";
 export type SiteSettings = {
   company_name: string;
   legal_name: string | null;
+  contact_email: string | null;
   logo_url: string | null;
   accent_color: string;
   guest_heading: string;
@@ -24,6 +25,7 @@ export type SiteSettings = {
 const DEFAULTS: SiteSettings = {
   company_name: "JPH Helpdesk",
   legal_name: null,
+  contact_email: null,
   logo_url: null,
   accent_color: "#1b2422",
   guest_heading: "JPH Support",

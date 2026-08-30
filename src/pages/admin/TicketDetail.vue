@@ -134,6 +134,16 @@
       </div>
 
       <div>
+        <FormLabel label="Category" />
+        <FormControl
+          v-model="categoryId"
+          type="select"
+          :options="categoryOptions"
+          @change="updateField('category_id', categoryId || null)"
+        />
+      </div>
+
+      <div>
         <FormLabel label="Priority" />
         <FormControl
           v-model="ticket.priority"
@@ -249,6 +259,7 @@ type Ticket = {
   status: string; priority: string;
   raised_by_email: string; contact_name: string | null;
   company_name: string | null; assigned_to: string | null;
+  category_id: string | null;
   created_at: string;
 };
 type Message = {
@@ -262,6 +273,8 @@ const messages = ref<Message[]>([]);
 const assignedTo = ref<string>("");
 const agentOptions = ref<{ label: string; value: string }[]>([]);
 const staffLabels = ref<Record<string, string>>({});
+const categoryId = ref<string>("");
+const categoryOptions = ref<{ label: string; value: string }[]>([]);
 
 /**
  * Message par kiska naam dikhana hai.
@@ -356,6 +369,16 @@ async function load() {
     // profiles se seedha nahi padh sakte — ab RLS sirf apni profile aur
     // admin ko sab deti hai. staff_directory() agent ko sirf "Agent 1"
     // jaisa code deta hai, admin ko asli naam.
+    const { data: cats } = await supabase
+      .from("ticket_categories")
+      .select("id, name")
+      .order("sort_order");
+    categoryOptions.value = [
+      { label: "None", value: "" },
+      ...(cats ?? []).map((c: any) => ({ label: c.name, value: c.id })),
+    ];
+    categoryId.value = t.category_id ?? "";
+
     const { data: dir } = await supabase.rpc("staff_directory");
     // Dropdown me specialization bhi — "AG-02" akela dekhkar agent ko
     // pata hi nahi chalta ki ticket kise dena chahiye.
