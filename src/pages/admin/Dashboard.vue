@@ -321,6 +321,7 @@
 
 <script setup lang="ts">
 import { supabase } from "@/lib/supabase";
+import { notify } from "@/lib/notify";
 import { useAuthStore } from "@/stores/auth";
 import {
   Avatar, Badge, Button, Dialog, ErrorMessage, FormControl, FormLabel,
@@ -520,14 +521,23 @@ async function applyToSelected(changes: Record<string, unknown>, done: string) {
   }
 }
 
-function bulkAssign(v: string) {
+async function bulkAssign(v: string) {
   if (!v) return;
+  const ids = [...selected];
+
   // "Unassign" ke liye khali string nahi bhej sakte — assigned_to uuid
   // column hai aur "" uske liye invalid hai.
-  applyToSelected(
+  await applyToSelected(
     { assigned_to: v === "__none__" ? null : v },
     v === "__none__" ? "unassigned" : "assigned"
   );
+
+  // Sab tickets ki EK mail, har ticket ki alag nahi. 77 assign karne par
+  // 77 mail bhejna Gmail ki din bhar ki limit hi kha jaata, aur agent ke
+  // inbox ka bhi bura haal karta.
+  if (v !== "__none__" && ids.length) {
+    notify("ticket_assigned", { agent_id: v, ticket_ids: ids });
+  }
 }
 
 function bulkStatus(v: string) {

@@ -415,7 +415,19 @@ async function saveChanges() {
       .eq("id", Number(props.id));
     if (error) throw error;
 
+    // Assign BADLA hai ya nahi, ye tulna save se PEHLE karni padti hai —
+    // uske baad `saved` naye maan se bhar jaata hai aur farq mit jaata.
+    const assignChanged =
+      edit.assigned_to && edit.assigned_to !== saved.assigned_to;
+
     saved = { ...edit };
+
+    if (assignChanged) {
+      notify("ticket_assigned", {
+        agent_id: edit.assigned_to,
+        ticket_ids: [Number(props.id)],
+      });
+    }
     // Dobara load karte hain kyunki resolved_by / resolved_at database ke
     // trigger se bharte hain — hamare bheje data me wo hote hi nahi, aur
     // bina reload ke screen par purani value padi rehti.
@@ -615,7 +627,19 @@ async function load() {
       category_id: t.category_id ?? "",
       due_date: t.due_date ?? "",
     });
+    // Assign BADLA hai ya nahi, ye tulna save se PEHLE karni padti hai —
+    // uske baad `saved` naye maan se bhar jaata hai aur farq mit jaata.
+    const assignChanged =
+      edit.assigned_to && edit.assigned_to !== saved.assigned_to;
+
     saved = { ...edit };
+
+    if (assignChanged) {
+      notify("ticket_assigned", {
+        agent_id: edit.assigned_to,
+        ticket_ids: [Number(props.id)],
+      });
+    }
 
     const { data: m } = await supabase
       .from("ticket_messages")

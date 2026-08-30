@@ -365,6 +365,99 @@ Deno.serve(async (req) => {
   }
 
   // ---------------------------------------------------------------- 3
+  // Ticket kisi agent ko assign hua — usko bata do.
+  //
+  // Ek hi mail me kai ticket ja sakte hain (bulk assign ke liye). 77
+  // ticket assign karne par 77 alag mail bhejna Gmail ki din bhar ki
+  // limit hi kha jaata, aur agent ke inbox ka bhi bura haal karta.
+  if (type === "ticket_assigned") {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const caller = createClient(url, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: u } = await caller.auth.getUser();
+    if (!u?.user) return json({ error: "Not signed in" }, 401, origin);
+
+    const { data: me } = await caller
+      .from("profiles").select("kind, is_active").eq("id", u.user.id).single();
+    if (!me || !me.is_active || !["admin", "agent"].includes(me.kind)) {
+      return json({ error: "Not allowed" }, 403, origin);
+    }
+
+    const agentId = String(body.agent_id ?? "");
+    const ids = Array.isArray(body.ticket_ids) ? body.ticket_ids.map(Number) : [];
+    if (!agentId || !ids.length) return json({ error: "Missing details" }, 400, origin);
+
+    // Apne aap ko assign kiya to mail bhejne ka koi matlab nahi — abhi
+    // to khud hi kiya hai.
+    if (agentId === u.user.id) return json({ ok: true, skipped: "self" }, 200, origin);
+
+    // Agent ka email service_role se padhte hain, client se nahi lete.
+    // Isse assign karne wale ko uska email kabhi pata nahi chalta —
+    // wahi pehchaan wala niyam jo poore app me hai.
+    const { data: agent } = await db
+      .from("profiles")
+      .select("email, full_name, agent_code, is_active")
+      .eq("id", agentId)
+      .single();
+    if (!agent || !agent.is_active) {
+      return json({ error: "Agent not found" }, 404, origin);
+    }
+
+    const { data: rows } = await db
+      .from("tickets")
+      .select("id, subject, priority, company_name, due_date")
+      .in("id", ids)
+      .order("due_date", { ascending: true });
+    if (!rows?.length) return json({ error: "Tickets not found" }, 404, origin);
+
+    const list = rows.slice(0, 20).map((t) => `
+      <tr>
+        <td style="padding:8px 10px;border-top:1px solid #eef1f0;font-size:14px;color:#1b2422;">
+          ${esc(t.subject)}
+          <span style="display:block;font-size:12px;color:#8a9391;">
+            ${esc(t.company_name || "—")}${t.due_date ? ` &middot; due ${esc(t.due_date)}` : ""}
+          </span>
+        </td>
+      </tr>`).join("");
+
+    const more = rows.length > 20
+      ? `<p style="margin:10px 0 0;font-size:13px;color:#8a9391;">
+           &hellip; and ${rows.length - 20} more.
+         </p>`
+      : "";
+
+    const html = layout(brand, {
+      preheader: `${rows.length} ticket${rows.length === 1 ? "" : "s"} assigned to you.`,
+      heading:
+        rows.length === 1
+          ? "A ticket was assigned to you"
+          : `${rows.length} tickets were assigned to you`,
+      bodyHtml: `
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3a4644;">
+          Hi ${esc(agent.full_name || agent.agent_code || "there")},
+        </p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f9f8;border-radius:8px;">
+          ${list}
+        </table>
+        ${more}`,
+      ctaText: rows.length === 1 ? "Open the ticket" : "Open your queue",
+      ctaUrl: rows.length === 1
+        ? `${appUrl}/admin/tickets/${rows[0].id}`
+        : `${appUrl}/admin`,
+    });
+
+    await sendMail(
+      agent.email,
+      rows.length === 1
+        ? `Assigned to you: ${rows[0].subject}`
+        : `${rows.length} tickets assigned to you`,
+      html
+    );
+    return json({ ok: true }, 200, origin);
+  }
+
+  // ---------------------------------------------------------------- 4
   // Naye agent ko welcome mail. Sirf admin bhej sakta hai.
   if (type === "user_invited") {
     const authHeader = req.headers.get("Authorization") ?? "";

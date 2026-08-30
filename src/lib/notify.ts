@@ -12,7 +12,7 @@ import { supabase } from "./supabase";
  * zaroorat nahi.
  */
 export async function notify(
-  type: "ticket_created" | "agent_reply" | "user_invited",
+  type: "ticket_created" | "agent_reply" | "ticket_assigned" | "user_invited",
   payload: Record<string, unknown>
 ): Promise<boolean> {
   try {
