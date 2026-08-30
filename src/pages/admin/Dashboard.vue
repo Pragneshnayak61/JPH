@@ -99,7 +99,7 @@
 
     <!-- ticket list -->
     <div class="mt-6 overflow-x-auto rounded-lg border border-outline-gray-2">
-      <table class="w-full min-w-[960px] text-p-base">
+      <table class="w-full min-w-[1100px] text-p-base">
         <thead class="bg-surface-gray-1 text-p-sm text-ink-gray-6">
           <tr>
             <th class="w-10 px-3 py-2">
@@ -123,21 +123,22 @@
             <th class="w-28 px-3 py-2 text-left font-medium">Status</th>
             <th class="w-28 px-3 py-2 text-left font-medium">Priority</th>
             <th class="w-28 px-3 py-2 text-left font-medium">Due</th>
+            <th class="w-40 px-3 py-2 text-left font-medium">Created by</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="9" class="px-4 py-10 text-center">
+            <td colspan="10" class="px-4 py-10 text-center">
               <LoadingIndicator class="mx-auto h-5 w-5 text-ink-gray-5" />
             </td>
           </tr>
           <tr v-else-if="error">
-            <td colspan="9" class="px-4 py-10 text-center text-ink-red-3">
+            <td colspan="10" class="px-4 py-10 text-center text-ink-red-3">
               {{ error }}
             </td>
           </tr>
           <tr v-else-if="!sortedTickets.length">
-            <td colspan="9" class="px-4 py-10 text-center text-ink-gray-5">
+            <td colspan="10" class="px-4 py-10 text-center text-ink-gray-5">
               <!-- Filter lagi ho to "No tickets yet" jhooth hai —
                    tickets hain, bas dikh nahi rahe. -->
               {{ hasFilters ? "No tickets match these filters." : "No tickets yet." }}
@@ -233,6 +234,18 @@
                 {{ formatDue(t.due_date) }}
               </span>
               <span v-else class="text-p-sm text-ink-gray-4">—</span>
+            </td>
+            <td class="px-3 py-2.5">
+              <span
+                v-if="t.created_by && staff[t.created_by]"
+                class="block truncate text-p-sm text-ink-gray-6"
+                :title="staff[t.created_by].label"
+              >
+                {{ staff[t.created_by].label }}
+              </span>
+              <!-- Guest form se aaye ticket par created_by null hota
+                   hai — wahan koi logged-in user hi nahi hota. -->
+              <span v-else class="text-p-sm text-ink-gray-4">Customer</span>
             </td>
           </tr>
         </tbody>
@@ -330,6 +343,7 @@ type Ticket = {
   raised_by_email: string;
   assigned_to: string | null;
   company_name: string | null;
+  created_by: string | null;
   due_date: string | null;
   created_at: string;
 };
@@ -613,7 +627,7 @@ async function load() {
     const { data, error: err } = await supabase
       .from("tickets")
       .select(
-        "id, subject, status, priority, contact_name, raised_by_email, assigned_to, company_name, due_date, created_at"
+        "id, subject, status, priority, contact_name, raised_by_email, assigned_to, company_name, created_by, due_date, created_at"
       )
       .order("created_at", { ascending: false });
     if (err) throw err;
