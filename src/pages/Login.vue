@@ -85,6 +85,22 @@ async function signIn() {
     // state dekhega aur wapas login par bhej dega.
     await auth.init();
 
+    // Yahan saaf batana ZAROORI hai. Pehle ye check nahi tha: login ho
+    // jaata tha, guard /admin par `isStaff` false dekhta tha aur chup-chaap
+    // guest page par bhej deta tha — user ko lagta tha login hi fail hua.
+    if (!auth.profile) {
+      error.value =
+        "Signed in, but your profile could not be loaded. Please contact the administrator.";
+      await auth.signOut();
+      return;
+    }
+    if (!auth.isStaff) {
+      error.value =
+        "This account is not an agent or admin. Ask an administrator to give you access.";
+      await auth.signOut();
+      return;
+    }
+
     // Guard ne jis page se bheja tha, wahin wapas le jao.
     const next = typeof route.query.next === "string" ? route.query.next : "/admin";
     router.replace(next);
