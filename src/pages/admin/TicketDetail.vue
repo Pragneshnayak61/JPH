@@ -204,19 +204,22 @@
         </p>
       </div>
 
-      <!-- Save button. Pehle har dropdown apne aap save karta tha, par
-           @change v-model se PEHLE chalta hai — to purani value save
-           hoti thi aur badlav gayab ho jaata tha. -->
-      <div class="sticky bottom-0 -mx-4 border-t border-outline-gray-2 bg-surface-gray-1 px-4 py-3">
-        <Button
-          variant="solid"
-          class="w-full"
-          :loading="saving"
-          :disabled="!isDirty"
-          @click="saveChanges"
-        >
-          {{ isDirty ? "Save changes" : "Saved" }}
-        </Button>
+      <!-- Auto-save ka haal. Button ki jagah ye, taaki pata rehta hai
+           ki badlav pahuncha ya nahi. Chup rehne par bharosa nahi
+           hota ki save hua bhi ya nahi. -->
+      <div class="flex h-5 items-center gap-1.5 text-p-sm">
+        <template v-if="saving">
+          <LoadingIndicator class="h-3 w-3 text-ink-gray-5" />
+          <span class="text-ink-gray-5">Saving...</span>
+        </template>
+        <template v-else-if="saveError">
+          <FeatherIcon name="alert-circle" class="h-3.5 w-3.5 text-ink-red-3" />
+          <span class="text-ink-red-3">Not saved</span>
+        </template>
+        <template v-else-if="justSaved">
+          <FeatherIcon name="check" class="h-3.5 w-3.5 text-ink-green-3" />
+          <span class="text-ink-green-3">Saved</span>
+        </template>
       </div>
 
       <div class="space-y-2 border-t border-outline-gray-2 pt-4 text-p-sm">
@@ -323,7 +326,7 @@ import {
   Avatar, Badge, Button, Dialog, ErrorMessage, FeatherIcon, FormControl,
   FormLabel, LoadingIndicator, toast,
 } from "frappe-ui";
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 const props = defineProps<{ id: string }>();
@@ -369,9 +372,29 @@ const edit = reactive({
 let saved = { ...edit };
 const saving = ref(false);
 
-const isDirty = computed(
-  () => JSON.stringify(edit) !== JSON.stringify(saved)
-);
+const justSaved = ref(false);
+
+/**
+ * Auto-save.
+ *
+ * Pehle har field par @change laga tha, aur wo TOOT gaya tha: @change
+ * v-model se PEHLE chalta hai, to purani value save hoti thi. Isliye
+ * agent assign karke wapas aane par ticket "Unassigned" hi rehta tha.
+ *
+ * watch() us se alag hai — wo value BADALNE KE BAAD chalta hai, isliye
+ * hamesha nayi value milti hai.
+ *
+ * Deri (debounce) isliye ki date field har keystroke par badalta hai.
+ * Bina iske "2026" likhte waqt hi chaar request chali jaatin.
+ */
+let saveTimer: ReturnType<typeof setTimeout> | undefined;
+
+watch(edit, () => {
+  if (loading.value) return; // pehli load par nahi
+  if (JSON.stringify(edit) === JSON.stringify(saved)) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveChanges, 600);
+});
 
 async function saveChanges() {
   saving.value = true;
@@ -396,7 +419,9 @@ async function saveChanges() {
     // trigger se bharte hain — hamare bheje data me wo hote hi nahi, aur
     // bina reload ke screen par purani value padi rehti.
     await load();
+    justSaved.value = true;
     toast.success("Ticket updated");
+    setTimeout(() => (justSaved.value = false), 2500);
   } catch (e: any) {
     saveError.value = e?.message || "Could not save";
     toast.error("Could not save the ticket");
@@ -404,6 +429,9 @@ async function saveChanges() {
     saving.value = false;
   }
 }
+
+// Adhoora save chhod kar page se nikalna theek nahi.
+onBeforeUnmount(() => clearTimeout(saveTimer));
 const agentOptions = ref<{ label: string; value: string }[]>([]);
 const staffLabels = ref<Record<string, string>>({});
 
