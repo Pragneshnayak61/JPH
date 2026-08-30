@@ -21,57 +21,76 @@
     </div>
 
     <!-- ticket list -->
-    <div class="mt-6 overflow-hidden rounded-lg border border-outline-gray-2">
-      <div
-        class="grid grid-cols-12 gap-3 border-b border-outline-gray-2 bg-surface-gray-1 px-4 py-2 text-p-sm font-medium text-ink-gray-6"
-      >
-        <div class="col-span-1">#</div>
-        <div class="col-span-5">Subject</div>
-        <div class="col-span-2">From</div>
-        <div class="col-span-2">Status</div>
-        <div class="col-span-2">Priority</div>
-      </div>
-
-      <div v-if="loading" class="px-4 py-10 text-center text-ink-gray-5">
-        <LoadingIndicator class="mx-auto h-5 w-5" />
-      </div>
-
-      <div v-else-if="error" class="px-4 py-10 text-center">
-        <p class="text-p-base text-ink-red-3">{{ error }}</p>
-      </div>
-
-      <div
-        v-else-if="!tickets.length"
-        class="px-4 py-10 text-center text-p-base text-ink-gray-5"
-      >
-        No tickets yet.
-      </div>
-
-      <RouterLink
-        v-for="t in tickets"
-        v-else
-        :key="t.id"
-        :to="`/admin/tickets/${t.id}`"
-        class="grid grid-cols-12 items-center gap-3 border-b border-outline-gray-2 px-4 py-2.5 text-p-base last:border-0 hover:bg-surface-gray-1"
-      >
-        <div class="col-span-1 font-mono text-p-sm text-ink-gray-5">
-          {{ t.id }}
-        </div>
-        <div class="col-span-5 truncate text-ink-gray-8">{{ t.subject }}</div>
-        <div class="col-span-2 truncate text-p-sm text-ink-gray-6">
-          {{ t.contact_name || t.raised_by_email }}
-        </div>
-        <div class="col-span-2">
-          <Badge :theme="statusTheme[t.status]" variant="subtle">
-            {{ t.status }}
-          </Badge>
-        </div>
-        <div class="col-span-2">
-          <Badge :theme="priorityTheme[t.priority]" variant="subtle">
-            {{ t.priority }}
-          </Badge>
-        </div>
-      </RouterLink>
+    <div class="mt-6 overflow-x-auto rounded-lg border border-outline-gray-2">
+      <table class="w-full min-w-[820px] text-p-base">
+        <thead class="bg-surface-gray-1 text-p-sm text-ink-gray-6">
+          <tr>
+            <th class="w-14 px-4 py-2 text-left font-medium">#</th>
+            <th class="px-3 py-2 text-left font-medium">Subject</th>
+            <th class="px-3 py-2 text-left font-medium">From</th>
+            <th class="px-3 py-2 text-left font-medium">Assigned to</th>
+            <th class="w-28 px-3 py-2 text-left font-medium">Status</th>
+            <th class="w-28 px-3 py-2 text-left font-medium">Priority</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="loading">
+            <td colspan="6" class="px-4 py-10 text-center">
+              <LoadingIndicator class="mx-auto h-5 w-5 text-ink-gray-5" />
+            </td>
+          </tr>
+          <tr v-else-if="error">
+            <td colspan="6" class="px-4 py-10 text-center text-ink-red-3">
+              {{ error }}
+            </td>
+          </tr>
+          <tr v-else-if="!tickets.length">
+            <td colspan="6" class="px-4 py-10 text-center text-ink-gray-5">
+              No tickets yet.
+            </td>
+          </tr>
+          <tr
+            v-for="t in tickets"
+            v-else
+            :key="t.id"
+            class="cursor-pointer border-t border-outline-gray-2 hover:bg-surface-gray-1"
+            @click="router.push(`/admin/tickets/${t.id}`)"
+          >
+            <td class="px-4 py-2.5 font-mono text-p-sm text-ink-gray-5">
+              {{ t.id }}
+            </td>
+            <td class="max-w-0 px-3 py-2.5">
+              <span class="block truncate text-ink-gray-8">{{ t.subject }}</span>
+            </td>
+            <td class="max-w-0 px-3 py-2.5">
+              <span class="block truncate text-p-sm text-ink-gray-6">
+                {{ t.contact_name || t.raised_by_email }}
+              </span>
+            </td>
+            <td class="px-3 py-2.5">
+              <span
+                v-if="t.assigned_to && staffLabels[t.assigned_to]"
+                class="text-p-sm text-ink-gray-7"
+              >
+                {{ staffLabels[t.assigned_to] }}
+              </span>
+              <!-- Unassigned ko halka nahi, dikhne wala rakha hai — yahi
+                   wo ticket hai jise koi utha hi nahi raha. -->
+              <Badge v-else theme="orange" variant="subtle">Unassigned</Badge>
+            </td>
+            <td class="px-3 py-2.5">
+              <Badge :theme="statusTheme[t.status]" variant="subtle">
+                {{ t.status }}
+              </Badge>
+            </td>
+            <td class="px-3 py-2.5">
+              <Badge :theme="priorityTheme[t.priority]" variant="subtle">
+                {{ t.priority }}
+              </Badge>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- Agent/admin khud ticket bana sake — jaise phone par baat hui ho -->
@@ -150,12 +169,14 @@ type Ticket = {
   priority: string;
   contact_name: string | null;
   raised_by_email: string;
+  assigned_to: string | null;
   created_at: string;
 };
 
 const tickets = ref<Ticket[]>([]);
 const loading = ref(true);
 const error = ref("");
+const staffLabels = ref<Record<string, string>>({});
 
 const statusTheme: Record<string, string> = {
   open: "orange",
@@ -246,10 +267,23 @@ onMounted(async () => {
   try {
     const { data, error: err } = await supabase
       .from("tickets")
-      .select("id, subject, status, priority, contact_name, raised_by_email, created_at")
+      .select(
+        "id, subject, status, priority, contact_name, raised_by_email, assigned_to, created_at"
+      )
       .order("created_at", { ascending: false });
     if (err) throw err;
     tickets.value = data ?? [];
+
+    // Naam seedha profiles se nahi le sakte — RLS agent ko doosri
+    // profiles padhne hi nahi deti. staff_directory admin ko asli naam
+    // aur agent ko sirf ID deta hai.
+    const { data: dir } = await supabase.rpc("staff_directory");
+    staffLabels.value = Object.fromEntries(
+      (dir ?? []).map((d: any) => [
+        d.id,
+        d.specialization ? `${d.label} · ${d.specialization}` : d.label,
+      ])
+    );
   } catch (e: any) {
     error.value = e?.message || "Could not load tickets";
   } finally {
