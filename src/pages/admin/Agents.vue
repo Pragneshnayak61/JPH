@@ -45,8 +45,9 @@
       <div
         class="grid grid-cols-12 gap-3 border-b border-outline-gray-2 bg-surface-gray-1 px-4 py-2 text-p-sm font-medium text-ink-gray-6"
       >
-        <div class="col-span-4">Person</div>
-        <div class="col-span-3">Access</div>
+        <div class="col-span-3">Person</div>
+        <div class="col-span-2">ID</div>
+        <div class="col-span-2">Access</div>
         <div class="col-span-3">Role</div>
         <div class="col-span-2">Status</div>
       </div>
@@ -65,7 +66,7 @@
         :key="p.id"
         class="grid grid-cols-12 items-center gap-3 border-b border-outline-gray-2 px-4 py-2.5 last:border-0"
       >
-        <div class="col-span-4 flex min-w-0 items-center gap-2">
+        <div class="col-span-3 flex min-w-0 items-center gap-2">
           <Avatar :label="p.full_name || p.email" size="sm" />
           <div class="min-w-0">
             <p class="truncate text-p-base text-ink-gray-8">
@@ -75,7 +76,16 @@
           </div>
         </div>
 
-        <div class="col-span-3">
+        <div class="col-span-2">
+          <FormControl
+            :model-value="p.agent_code ?? ''"
+            :placeholder="p.kind === 'customer' ? '—' : 'AG-01'"
+            :disabled="p.kind === 'customer' || saving === p.id"
+            @change="(e: any) => setCode(p, e.target.value)"
+          />
+        </div>
+
+        <div class="col-span-2">
           <FormControl
             type="select"
             :model-value="p.kind"
@@ -121,6 +131,11 @@
     <ErrorMessage :message="saveError" class="mt-3" />
 
     <p class="mt-2 text-p-sm text-ink-gray-5">
+      Agents see each other by <strong>ID only</strong> &mdash; never by name
+      or email. Use anything you like here (an employee number, for example);
+      leave it blank and one is generated.
+    </p>
+    <p class="mt-1 text-p-sm text-ink-gray-5">
       You cannot change your own access or disable yourself &mdash; that would
       lock you out.
     </p>
@@ -272,6 +287,7 @@ type Person = {
   id: string; email: string; full_name: string | null;
   kind: "admin" | "agent" | "customer";
   role_id: string | null; is_active: boolean;
+  agent_code: string | null;
 };
 type Role = {
   id: string; name: string; description: string | null;
@@ -314,7 +330,7 @@ async function load() {
     const [{ data: p, error: e1 }, { data: r, error: e2 }] = await Promise.all([
       supabase
         .from("profiles")
-        .select("id, email, full_name, kind, role_id, is_active")
+        .select("id, email, full_name, kind, role_id, is_active, agent_code")
         .order("kind")
         .order("email"),
       supabase.from("roles").select("*").order("name"),
@@ -353,6 +369,16 @@ async function setKind(p: Person, kind: string) {
   const changes: Record<string, unknown> =
     kind === "customer" ? { kind, role_id: null } : { kind };
   await patch(p, changes);
+}
+
+async function setCode(p: Person, code: string) {
+  const next = code.trim();
+  if (next === (p.agent_code ?? "")) return;
+  // Khali chhodne par DB trigger nayi ID bana deta hai, isliye null bhejte
+  // hain — khali string bhejte to unique index par takrav hota.
+  const ok = await patch(p, { agent_code: next || null });
+  // Trigger ne kya value rakhi, wo sirf reload se pata chalti hai.
+  if (ok) await load();
 }
 
 function setRole(p: Person, roleId: string) {
