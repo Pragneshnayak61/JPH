@@ -62,8 +62,28 @@ function toText(html: string) {
     .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    // Line ke aakhir ki spaces — yahi "=20" ban jaati hain.
+    .replace(/[ \t]+$/gm, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/**
+ * HTML se line-end ki spaces hatata hai.
+ *
+ * Yahi "=20" ki asli jad hai. Mail quoted-printable me encode hoti hai,
+ * aur usme line ke aakhir ka space `=20` ban kar mail me DIKHNE lagta
+ * hai. Hamara template indentation ke saath likha hai, to har line ke
+ * aakhir me spaces bach jaate the.
+ *
+ * Khali lines bhi hata dete hain — wo bhi encode hokar shor banti hain.
+ */
+function tidy(html: string) {
+  return html
+    .split("\n")
+    .map((l) => l.replace(/[ \t]+$/, ""))
+    .filter((l) => l.trim().length > 0)
+    .join("\n");
 }
 
 type Brand = { name: string; color: string; logo: string | null; contact: string | null };
@@ -180,7 +200,7 @@ async function sendMail(to: string, subject: string, html: string) {
       // quoted-printable ke tukde dikhte the, aur jin clients me HTML
       // band ho unhe kuch padhne ko hi nahi milta tha.
       content: toText(html),
-      html,
+      html: tidy(html),
     });
   } finally {
     // close() na karein to connection khula reh jaata hai aur function
@@ -259,16 +279,26 @@ Deno.serve(async (req) => {
         </p>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f9f8;border-radius:8px;">
         <tr><td style="padding:14px 16px;">
-          <p style="margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#8a9391;">Ticket #${t.id}</p>
-          <p style="margin:0;font-size:15px;font-weight:600;color:#1b2422;">${esc(t.subject)}</p>
+          <p style="margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#8a9391;">Your request</p>
+          <p style="margin:0 0 10px;font-size:15px;font-weight:600;color:#1b2422;">${esc(t.subject)}</p>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#8a9391;">
+            Your link:<br>
+            <a href="${appUrl}/ticket/${t.public_token}" style="color:${esc(brand.color)};word-break:break-all;">${appUrl}/ticket/${t.public_token}</a>
+          </p>
         </td></tr>
         </table>`,
       ctaText: "View your ticket",
       ctaUrl: `${appUrl}/ticket/${t.public_token}`,
-      footnote: "You can also just reply to this email to add anything.",
+      footnote:
+        "Keep this email &mdash; the link above takes you straight back to " +
+        "your ticket, so there is nothing to bookmark. You can also just " +
+        "reply to this email.",
     });
 
-    await sendMail(t.raised_by_email, `[#${t.id}] ${t.subject}`, html);
+    // Subject me "#7" nahi. Wo andar ka number hai, customer ke kisi
+    // kaam ka nahi — use link chahiye. Number body me reference ke saath
+    // dikh hi jaata hai.
+    await sendMail(t.raised_by_email, t.subject, html);
     return json({ ok: true }, 200, origin);
   }
 
@@ -320,13 +350,17 @@ Deno.serve(async (req) => {
         </table>
         <p style="margin:14px 0 0;font-size:13px;color:#8a9391;">
           &mdash; ${esc(m.author_name || "Support")}
+        </p>
+        <p style="margin:14px 0 0;font-size:13px;line-height:1.5;color:#8a9391;">
+          Your ticket link:<br>
+          <a href="${appUrl}/ticket/${t.public_token}" style="color:${esc(brand.color)};word-break:break-all;">${appUrl}/ticket/${t.public_token}</a>
         </p>`,
       ctaText: "View the full ticket",
       ctaUrl: `${appUrl}/ticket/${t.public_token}`,
       footnote: "Reply to this email to continue the conversation.",
     });
 
-    await sendMail(t.raised_by_email, `Re: [#${t.id}] ${t.subject}`, html);
+    await sendMail(t.raised_by_email, `Re: ${t.subject}`, html);
     return json({ ok: true }, 200, origin);
   }
 

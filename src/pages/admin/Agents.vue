@@ -35,8 +35,7 @@
       </ol>
       <p class="mt-3 text-p-sm text-ink-gray-6">
         Or use <strong>Add person</strong> above to create the account for
-        them. You set a temporary password and share it with them &mdash;
-        there is no email set up yet, so nothing is sent automatically.
+        them &mdash; their login details are emailed automatically.
       </p>
     </div>
 
@@ -363,10 +362,10 @@
           />
 
           <div
-            class="rounded-lg border border-outline-amber-2 bg-surface-amber-1 p-3 text-p-sm text-ink-gray-7"
+            class="rounded-lg border border-outline-blue-2 bg-surface-blue-1 p-3 text-p-sm text-ink-gray-7"
           >
-            Email is not set up yet, so no invite is sent. Share this password
-            with them yourself, and over something safer than plain email.
+            These login details will be emailed to them. They should change the
+            password after signing in.
           </div>
 
           <ErrorMessage :message="createError" />
@@ -656,9 +655,12 @@ async function createPerson() {
     });
 
     showAdd.value = false;
+    // Mail fail hone par password DIKHANA zaroori hai — warna account to
+    // ban gaya par uska password kisi ko pata hi nahi, aur wo account
+    // bekaar pada rehta.
     lastCreated.value = mailed
-      ? `Account created and the details were emailed to ${form.email.trim()}.`
-      : `Account created, but the email could not be sent. Share this password yourself: ${form.password}`;
+      ? `Account created. Login details emailed to ${form.email.trim()}.`
+      : `Account created, but the email did not go out. Share this password yourself: ${form.password}`;
     await load();
   } catch (e: any) {
     createError.value = e?.message || "Could not create the account";
