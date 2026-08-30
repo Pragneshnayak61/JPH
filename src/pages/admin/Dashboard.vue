@@ -108,7 +108,7 @@
             </td>
           </tr>
           <tr
-            v-for="t in tickets"
+            v-for="t in sortedTickets"
             v-else
             :key="t.id"
             class="cursor-pointer border-t border-outline-gray-2 hover:bg-surface-gray-1"
@@ -303,6 +303,38 @@ const loading = ref(true);
 const error = ref("");
 const staff = ref<Record<string, { label: string; specialization: string | null }>>({});
 
+/**
+ * Kaam wale tickets upar, nipte hue neeche.
+ *
+ * Ye SQL me nahi ho sakta tha — PostgREST me "CASE status WHEN ..." wali
+ * ordering nahi likh sakte. 77 rows par client par sort karna sasta hai.
+ *
+ * Andar deadline ke hisaab se: jiski date sabse pehle nikal rahi hai wo
+ * upar. Bina due date wale sabse neeche — un par koi deadline hai hi nahi.
+ */
+const STATUS_ORDER: Record<string, number> = {
+  open: 0, replied: 1, resolved: 2, closed: 3,
+};
+
+const sortedTickets = computed(() =>
+  [...tickets.value].sort((a, b) => {
+    const s = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
+    if (s !== 0) return s;
+
+    // Nipte hue tickets me deadline ka matlab nahi — unme naya pehle.
+    if (a.status === "resolved" || a.status === "closed") {
+      return b.created_at.localeCompare(a.created_at);
+    }
+
+    // due_date null ko "bahut door" maan lete hain, taaki wo neeche jaye
+    // aur upar wo aayein jinki tareekh sach me paas hai.
+    const ad = a.due_date ?? "9999-12-31";
+    const bd = b.due_date ?? "9999-12-31";
+    if (ad !== bd) return ad.localeCompare(bd);
+    return b.created_at.localeCompare(a.created_at);
+  })
+);
+
 const statusTheme: Record<string, string> = {
   open: "orange",
   replied: "blue",
@@ -357,7 +389,7 @@ const allSelected = computed(
 
 function toggleAll() {
   if (allSelected.value) selected.clear();
-  else tickets.value.forEach((t) => selected.add(t.id));
+  else sortedTickets.value.forEach((t) => selected.add(t.id));
 }
 
 function toggleOne(id: number) {
