@@ -65,7 +65,7 @@
 
     <!-- ticket list -->
     <div class="mt-6 overflow-x-auto rounded-lg border border-outline-gray-2">
-      <table class="w-full min-w-[820px] text-p-base">
+      <table class="w-full min-w-[960px] text-p-base">
         <thead class="bg-surface-gray-1 text-p-sm text-ink-gray-6">
           <tr>
             <th class="w-10 px-3 py-2">
@@ -82,6 +82,7 @@
                  milti hai. Baaki columns ko fix width di hai, warna wo
                  apne content se zyada jagah le lete the aur subject
                  bekaar me kat jaata tha. -->
+            <th class="w-32 px-3 py-2 text-left font-medium">Company</th>
             <th class="px-3 py-2 text-left font-medium">Subject</th>
             <th class="w-44 px-3 py-2 text-left font-medium">From</th>
             <th class="w-48 px-3 py-2 text-left font-medium">Assigned to</th>
@@ -92,17 +93,17 @@
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="8" class="px-4 py-10 text-center">
+            <td colspan="9" class="px-4 py-10 text-center">
               <LoadingIndicator class="mx-auto h-5 w-5 text-ink-gray-5" />
             </td>
           </tr>
           <tr v-else-if="error">
-            <td colspan="8" class="px-4 py-10 text-center text-ink-red-3">
+            <td colspan="9" class="px-4 py-10 text-center text-ink-red-3">
               {{ error }}
             </td>
           </tr>
           <tr v-else-if="!tickets.length">
-            <td colspan="8" class="px-4 py-10 text-center text-ink-gray-5">
+            <td colspan="9" class="px-4 py-10 text-center text-ink-gray-5">
               No tickets yet.
             </td>
           </tr>
@@ -125,6 +126,16 @@
             </td>
             <td class="px-4 py-2.5 font-mono text-p-sm text-ink-gray-5">
               {{ t.id }}
+            </td>
+            <td class="px-3 py-2.5">
+              <span
+                v-if="t.company_name"
+                class="block truncate text-p-sm text-ink-gray-7"
+                :title="t.company_name"
+              >
+                {{ t.company_name }}
+              </span>
+              <span v-else class="text-p-sm text-ink-gray-4">—</span>
             </td>
             <td class="max-w-0 px-3 py-2.5">
               <!-- title se hover par poora subject dikhta hai. Custom
@@ -282,6 +293,7 @@ type Ticket = {
   contact_name: string | null;
   raised_by_email: string;
   assigned_to: string | null;
+  company_name: string | null;
   due_date: string | null;
   created_at: string;
 };
@@ -469,7 +481,7 @@ onMounted(async () => {
     const { data, error: err } = await supabase
       .from("tickets")
       .select(
-        "id, subject, status, priority, contact_name, raised_by_email, assigned_to, due_date, created_at"
+        "id, subject, status, priority, contact_name, raised_by_email, assigned_to, company_name, due_date, created_at"
       )
       .order("created_at", { ascending: false });
     if (err) throw err;
