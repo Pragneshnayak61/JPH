@@ -9,24 +9,24 @@
         <FeatherIcon name="check" class="h-6 w-6 text-ink-green-3" />
       </div>
 
-      <h1 class="text-lg font-semibold text-ink-gray-9">Ticket bhej diya gaya</h1>
+      <h1 class="text-lg font-semibold text-ink-gray-9">Ticket submitted</h1>
       <p class="mt-2 text-p-base text-ink-gray-6">
-        Hamari team aapke email par jawab degi.
+        Our team will reply to your email.
       </p>
 
       <div class="mt-5 rounded-lg bg-surface-gray-2 p-3">
-        <p class="text-p-sm text-ink-gray-6">Aapka ticket number</p>
+        <p class="text-p-sm text-ink-gray-6">Your ticket reference</p>
         <p class="mt-1 font-mono text-base font-medium text-ink-gray-9">
           {{ token }}
         </p>
       </div>
 
       <p class="mt-4 text-p-sm text-ink-gray-5">
-        Ise sambhal kar rakhiye &mdash; ticket ki halat dekhne ke kaam aayega.
+        Keep this safe &mdash; you will need it to check your ticket.
       </p>
 
       <Button variant="subtle" class="mt-5 w-full" @click="router.push('/')">
-        Ek aur ticket bhejiye
+        Submit another ticket
       </Button>
     </div>
   </div>

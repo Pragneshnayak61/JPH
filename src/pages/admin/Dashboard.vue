@@ -2,7 +2,7 @@
   <div class="p-6">
     <h1 class="text-xl font-semibold text-ink-gray-9">Dashboard</h1>
     <p class="mt-1 text-p-base text-ink-gray-6">
-      Saare tickets yahin dikhte hain
+      Every ticket lands here
     </p>
 
     <!-- stat tiles -->
@@ -24,7 +24,7 @@
       >
         <div class="col-span-1">#</div>
         <div class="col-span-5">Subject</div>
-        <div class="col-span-2">Se aaya</div>
+        <div class="col-span-2">From</div>
         <div class="col-span-2">Status</div>
         <div class="col-span-2">Priority</div>
       </div>
@@ -41,7 +41,7 @@
         v-else-if="!tickets.length"
         class="px-4 py-10 text-center text-p-base text-ink-gray-5"
       >
-        Abhi koi ticket nahi hai.
+        No tickets yet.
       </div>
 
       <RouterLink
@@ -109,7 +109,7 @@ const priorityTheme: Record<string, string> = {
 const stats = computed(() => {
   const by = (s: string) => tickets.value.filter((t) => t.status === s).length;
   return [
-    { label: "Kul tickets", value: tickets.value.length },
+    { label: "Total", value: tickets.value.length },
     { label: "Open", value: by("open") },
     { label: "Replied", value: by("replied") },
     { label: "Resolved", value: by("resolved") },
@@ -125,7 +125,7 @@ onMounted(async () => {
     if (err) throw err;
     tickets.value = data ?? [];
   } catch (e: any) {
-    error.value = e?.message || "Tickets load nahi ho paye";
+    error.value = e?.message || "Could not load tickets";
   } finally {
     loading.value = false;
   }

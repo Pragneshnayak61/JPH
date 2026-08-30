@@ -11,7 +11,7 @@
         <div>
           <h1 class="text-lg font-semibold text-ink-gray-9">JPH Support</h1>
           <p class="text-sm text-ink-gray-6">
-            Apni problem bataiye &mdash; account banane ki zaroorat nahi
+            Tell us what went wrong &mdash; no account needed
           </p>
         </div>
       </div>
@@ -23,7 +23,7 @@
         <div class="space-y-4">
           <FormControl
             v-model="form.contact_name"
-            label="Aapka naam"
+            label="Your name"
             placeholder="Ramesh Kumar"
             :disabled="submitting"
           />
@@ -36,12 +36,12 @@
             :disabled="submitting"
           />
           <p class="-mt-2 text-p-sm text-ink-gray-5">
-            Iss email par hum jawab bhejenge
+            We will reply to this address
           </p>
 
           <FormControl
             v-model="form.company_name"
-            label="Company ka naam"
+            label="Company name"
             placeholder="New Client Pvt Ltd"
             :disabled="submitting"
           />
@@ -49,7 +49,7 @@
           <FormControl
             v-model="form.subject"
             label="Subject"
-            placeholder="Ek line me problem"
+            placeholder="One line about the problem"
             :disabled="submitting"
           />
 
@@ -65,8 +65,8 @@
             v-model="form.description"
             type="textarea"
             :rows="6"
-            label="Problem detail me bataiye"
-            placeholder="Kya hua, kab hua, kya karne par hua..."
+            label="Describe the problem"
+            placeholder="What happened, when it started, what you were doing..."
             :disabled="submitting"
           />
 
@@ -79,14 +79,14 @@
             :loading="submitting"
             @click="submit"
           >
-            Ticket bhejiye
+            Submit ticket
           </Button>
         </div>
       </div>
 
       <p class="mt-4 text-center text-p-sm text-ink-gray-5">
-        Pehle se account hai?
-        <RouterLink to="/login" class="underline">Login kijiye</RouterLink>
+        Already have an account?
+        <RouterLink to="/login" class="underline">Sign in</RouterLink>
       </p>
     </div>
   </div>
@@ -120,13 +120,13 @@ const submitting = ref(false);
 const error = ref("");
 
 function validate(): string {
-  if (!form.contact_name.trim()) return "Apna naam daaliye";
-  if (!form.email.trim()) return "Email daaliye";
+  if (!form.contact_name.trim()) return "Please enter your name";
+  if (!form.email.trim()) return "Please enter your email";
   // Bahut sakht regex jaan-boojh kar nahi rakha — asli check to email
   // bhejne par hi hota hai. Yahan sirf saaf galtiyan pakadni hain.
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return "Email sahi nahi lag raha";
-  if (!form.subject.trim()) return "Subject daaliye";
-  if (!form.description.trim()) return "Problem detail me bataiye";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return "That email does not look right";
+  if (!form.subject.trim()) return "Please enter a subject";
+  if (!form.description.trim()) return "Please describe the problem";
   return "";
 }
 
@@ -154,7 +154,7 @@ async function submit() {
     if (err) throw err;
     router.push({ name: "TicketSubmitted", params: { token: data } });
   } catch (e: any) {
-    error.value = e?.message || "Ticket nahi bhej paye. Dobara koshish kijiye.";
+    error.value = e?.message || "Could not submit the ticket. Please try again.";
   } finally {
     submitting.value = false;
   }

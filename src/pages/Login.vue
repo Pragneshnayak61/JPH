@@ -8,7 +8,7 @@
           J
         </div>
         <h1 class="text-lg font-semibold text-ink-gray-9">JPH Helpdesk</h1>
-        <p class="mt-1 text-p-sm text-ink-gray-6">Agent aur admin ke liye</p>
+        <p class="mt-1 text-p-sm text-ink-gray-6">For agents and admins</p>
       </div>
 
       <div
@@ -18,7 +18,7 @@
           v-model="email"
           type="email"
           label="Email"
-          placeholder="aap@company.com"
+          placeholder="you@company.com"
           :disabled="loading"
           @keyup.enter="signIn"
         />
@@ -44,9 +44,9 @@
       </div>
 
       <p class="mt-4 text-center text-p-sm text-ink-gray-5">
-        Ticket bhejna hai?
-        <RouterLink to="/" class="underline">Yahan jaaiye</RouterLink>
-        &mdash; login ki zaroorat nahi
+        Need to raise a ticket?
+        <RouterLink to="/" class="underline">Go here</RouterLink>
+        &mdash; no sign-in required
       </p>
     </div>
   </div>
@@ -66,7 +66,7 @@ const error = ref("");
 
 async function signIn() {
   if (!email.value || !password.value) {
-    error.value = "Email aur password dono daaliye";
+    error.value = "Please enter both email and password";
     return;
   }
   loading.value = true;
@@ -79,7 +79,7 @@ async function signIn() {
     if (err) throw err;
     router.push("/admin");
   } catch (e: any) {
-    error.value = e?.message || "Login nahi ho paya";
+    error.value = e?.message || "Could not sign in";
   } finally {
     loading.value = false;
   }
