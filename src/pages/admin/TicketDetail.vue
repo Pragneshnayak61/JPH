@@ -163,25 +163,13 @@
     >
       <div>
         <FormLabel label="Status" />
-        <FormControl
-          v-model="ticket.status"
-          type="select"
-          :options="statusOptions"
-          @change="updateField('status', ticket.status)"
-        />
+        <FormControl v-model="edit.status" type="select" :options="statusOptions" />
       </div>
 
       <div>
         <FormLabel label="Due date" />
-        <FormControl
-          v-model="dueDate"
-          type="date"
-          @change="updateField('due_date', dueDate || null)"
-        />
-        <p
-          v-if="isOverdue"
-          class="mt-1 text-p-sm font-medium text-ink-red-3"
-        >
+        <FormControl v-model="edit.due_date" type="date" />
+        <p v-if="isOverdue" class="mt-1 text-p-sm font-medium text-ink-red-3">
           Overdue
         </p>
       </div>
@@ -189,31 +177,24 @@
       <div>
         <FormLabel label="Category" />
         <FormControl
-          v-model="categoryId"
+          v-model="edit.category_id"
           type="select"
           :options="categoryOptions"
-          @change="updateField('category_id', categoryId || null)"
         />
       </div>
 
       <div>
         <FormLabel label="Priority" />
-        <FormControl
-          v-model="ticket.priority"
-          type="select"
-          :options="priorityOptions"
-          @change="updateField('priority', ticket.priority)"
-        />
+        <FormControl v-model="edit.priority" type="select" :options="priorityOptions" />
       </div>
 
       <div>
         <FormLabel label="Assigned to" />
         <FormControl
-          v-model="assignedTo"
+          v-model="edit.assigned_to"
           type="select"
           :options="agentOptions"
           :disabled="!auth.can('can_assign_tickets')"
-          @change="updateField('assigned_to', assignedTo || null)"
         />
         <p
           v-if="!auth.can('can_assign_tickets')"
@@ -221,6 +202,21 @@
         >
           You do not have permission to assign tickets.
         </p>
+      </div>
+
+      <!-- Save button. Pehle har dropdown apne aap save karta tha, par
+           @change v-model se PEHLE chalta hai — to purani value save
+           hoti thi aur badlav gayab ho jaata tha. -->
+      <div class="sticky bottom-0 -mx-4 border-t border-outline-gray-2 bg-surface-gray-1 px-4 py-3">
+        <Button
+          variant="solid"
+          class="w-full"
+          :loading="saving"
+          :disabled="!isDirty"
+          @click="saveChanges"
+        >
+          {{ isDirty ? "Save changes" : "Saved" }}
+        </Button>
       </div>
 
       <div class="space-y-2 border-t border-outline-gray-2 pt-4 text-p-sm">
@@ -298,9 +294,9 @@ import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth";
 import {
   Avatar, Badge, Button, Dialog, ErrorMessage, FeatherIcon, FormControl,
-  FormLabel, LoadingIndicator,
+  FormLabel, LoadingIndicator, toast,
 } from "frappe-ui";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 
 const props = defineProps<{ id: string }>();
@@ -324,18 +320,67 @@ type Message = {
 
 const ticket = ref<Ticket | null>(null);
 const messages = ref<Message[]>([]);
-const assignedTo = ref<string>("");
+/**
+ * Sidebar ke saare badalne wale field ek jagah.
+ *
+ * Pehle har field seedha save hota tha (@change par). Wo do wajah se
+ * galat tha:
+ *   - @change v-model se PEHLE chalta hai, to purani value jaati thi
+ *   - har chhote badlav par ek request, aur aadha-adhoora state bach
+ *     jaata agar beech me koi fail ho jaye
+ */
+const edit = reactive({
+  status: "",
+  priority: "",
+  assigned_to: "",
+  category_id: "",
+  due_date: "",
+});
+// Jo server par hai. Isse tulna karke pata chalta hai kuch badla ya nahi.
+let saved = { ...edit };
+const saving = ref(false);
+
+const isDirty = computed(
+  () => JSON.stringify(edit) !== JSON.stringify(saved)
+);
+
+async function saveChanges() {
+  saving.value = true;
+  saveError.value = "";
+  try {
+    const { error } = await supabase
+      .from("tickets")
+      .update({
+        status: edit.status,
+        priority: edit.priority,
+        // khali string nahi — ye uuid/date columns hain, "" unke liye
+        // invalid hai aur Postgres error de deta hai
+        assigned_to: edit.assigned_to || null,
+        category_id: edit.category_id || null,
+        due_date: edit.due_date || null,
+      })
+      .eq("id", Number(props.id));
+    if (error) throw error;
+
+    saved = { ...edit };
+    if (ticket.value) ticket.value.status = edit.status;
+    toast.success("Ticket updated");
+  } catch (e: any) {
+    saveError.value = e?.message || "Could not save";
+    toast.error("Could not save the ticket");
+  } finally {
+    saving.value = false;
+  }
+}
 const agentOptions = ref<{ label: string; value: string }[]>([]);
 const staffLabels = ref<Record<string, string>>({});
-const categoryId = ref<string>("");
-const dueDate = ref<string>("");
 
 // Band ho chuke ticket par "Overdue" dikhana bekaar hai — kaam ho gaya,
 // deri ab maayne nahi rakhti.
 const isOverdue = computed(() => {
-  if (!dueDate.value || !ticket.value) return false;
-  if (["resolved", "closed"].includes(ticket.value.status)) return false;
-  return new Date(dueDate.value) < new Date(new Date().toDateString());
+  if (!edit.due_date) return false;
+  if (["resolved", "closed"].includes(edit.status)) return false;
+  return new Date(edit.due_date) < new Date(new Date().toDateString());
 });
 const categoryOptions = ref<{ label: string; value: string }[]>([]);
 
@@ -502,7 +547,14 @@ async function load() {
       .single();
     if (e1) throw e1;
     ticket.value = t as Ticket;
-    assignedTo.value = t.assigned_to ?? "";
+    Object.assign(edit, {
+      status: t.status,
+      priority: t.priority,
+      assigned_to: t.assigned_to ?? "",
+      category_id: t.category_id ?? "",
+      due_date: t.due_date ?? "",
+    });
+    saved = { ...edit };
 
     const { data: m } = await supabase
       .from("ticket_messages")
@@ -522,8 +574,6 @@ async function load() {
       { label: "None", value: "" },
       ...(cats ?? []).map((c: any) => ({ label: c.name, value: c.id })),
     ];
-    categoryId.value = t.category_id ?? "";
-    dueDate.value = t.due_date ?? "";
 
     const { data: dir } = await supabase.rpc("staff_directory");
     // Dropdown me specialization bhi — "AG-02" akela dekhkar agent ko
@@ -610,6 +660,8 @@ async function sendReply() {
     if (!isInternal.value && ticket.value && ticket.value.status === "open") {
       await updateField("status", "replied");
       ticket.value.status = "replied";
+      edit.status = "replied";
+      saved.status = "replied";
     }
 
     reply.value = "";

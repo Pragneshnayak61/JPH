@@ -1,5 +1,9 @@
 <template>
-  <div class="h-full">
+  <!-- FrappeUIProvider toast ka container ([data-sonner-toaster]) lagata
+       hai. Iske bina toast() chup-chaap kuch nahi karta — koi error bhi
+       nahi deta, bas message kabhi dikhta hi nahi. -->
+  <FrappeUIProvider>
+    <div class="h-full">
     <!-- Show a clear message instead of a blank screen when Supabase is not wired up yet -->
     <div
       v-if="!isSupabaseConfigured"
@@ -10,10 +14,12 @@
       <code class="font-mono">VITE_SUPABASE_ANON_KEY</code> in your <code class="font-mono">.env</code> file.
     </div>
 
-    <RouterView />
-  </div>
+      <RouterView />
+    </div>
+  </FrappeUIProvider>
 </template>
 
 <script setup lang="ts">
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { FrappeUIProvider } from "frappe-ui";
 </script>
