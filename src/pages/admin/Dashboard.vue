@@ -68,12 +68,23 @@
               </span>
             </td>
             <td class="px-3 py-2.5">
-              <span
-                v-if="t.assigned_to && staffLabels[t.assigned_to]"
-                class="text-p-sm text-ink-gray-7"
+              <div
+                v-if="t.assigned_to && staff[t.assigned_to]"
+                class="flex items-center gap-2"
               >
-                {{ staffLabels[t.assigned_to] }}
-              </span>
+                <Avatar :label="staff[t.assigned_to].label" size="sm" />
+                <div class="min-w-0 leading-tight">
+                  <p class="truncate text-p-sm text-ink-gray-8">
+                    {{ staff[t.assigned_to].label }}
+                  </p>
+                  <p
+                    v-if="staff[t.assigned_to].specialization"
+                    class="truncate text-p-sm text-ink-gray-5"
+                  >
+                    {{ staff[t.assigned_to].specialization }}
+                  </p>
+                </div>
+              </div>
               <!-- Unassigned ko halka nahi, dikhne wala rakha hai — yahi
                    wo ticket hai jise koi utha hi nahi raha. -->
               <Badge v-else theme="orange" variant="subtle">Unassigned</Badge>
@@ -157,7 +168,7 @@
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth";
 import {
-  Badge, Button, Dialog, ErrorMessage, FormControl, LoadingIndicator,
+  Avatar, Badge, Button, Dialog, ErrorMessage, FormControl, LoadingIndicator,
 } from "frappe-ui";
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
@@ -176,7 +187,7 @@ type Ticket = {
 const tickets = ref<Ticket[]>([]);
 const loading = ref(true);
 const error = ref("");
-const staffLabels = ref<Record<string, string>>({});
+const staff = ref<Record<string, { label: string; specialization: string | null }>>({});
 
 const statusTheme: Record<string, string> = {
   open: "orange",
@@ -278,10 +289,12 @@ onMounted(async () => {
     // profiles padhne hi nahi deti. staff_directory admin ko asli naam
     // aur agent ko sirf ID deta hai.
     const { data: dir } = await supabase.rpc("staff_directory");
-    staffLabels.value = Object.fromEntries(
+    // label aur specialization alag rakhte hain — ek hi string bana dete
+    // to UI me do line me nahi dikha paate.
+    staff.value = Object.fromEntries(
       (dir ?? []).map((d: any) => [
         d.id,
-        d.specialization ? `${d.label} · ${d.specialization}` : d.label,
+        { label: d.label as string, specialization: d.specialization as string | null },
       ])
     );
   } catch (e: any) {
