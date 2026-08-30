@@ -25,10 +25,14 @@
       <table class="w-full min-w-[820px] text-p-base">
         <thead class="bg-surface-gray-1 text-p-sm text-ink-gray-6">
           <tr>
-            <th class="w-14 px-4 py-2 text-left font-medium">#</th>
+            <th class="w-16 px-4 py-2 text-left font-medium">ID</th>
+            <!-- Subject par koi width nahi: bachi hui saari jagah isi ko
+                 milti hai. Baaki columns ko fix width di hai, warna wo
+                 apne content se zyada jagah le lete the aur subject
+                 bekaar me kat jaata tha. -->
             <th class="px-3 py-2 text-left font-medium">Subject</th>
-            <th class="px-3 py-2 text-left font-medium">From</th>
-            <th class="px-3 py-2 text-left font-medium">Assigned to</th>
+            <th class="w-44 px-3 py-2 text-left font-medium">From</th>
+            <th class="w-48 px-3 py-2 text-left font-medium">Assigned to</th>
             <th class="w-28 px-3 py-2 text-left font-medium">Status</th>
             <th class="w-28 px-3 py-2 text-left font-medium">Priority</th>
             <th class="w-28 px-3 py-2 text-left font-medium">Due</th>
@@ -61,10 +65,21 @@
               {{ t.id }}
             </td>
             <td class="max-w-0 px-3 py-2.5">
-              <span class="block truncate text-ink-gray-8">{{ t.subject }}</span>
+              <!-- title se hover par poora subject dikhta hai. Custom
+                   tooltip ke bajaye ye isliye ki table me har row par
+                   tooltip lagane se scroll bhi bhaari ho jaata hai. -->
+              <span
+                class="block truncate font-medium text-ink-gray-8"
+                :title="t.subject"
+              >
+                {{ t.subject }}
+              </span>
             </td>
             <td class="max-w-0 px-3 py-2.5">
-              <span class="block truncate text-p-sm text-ink-gray-6">
+              <span
+                class="block truncate text-p-sm text-ink-gray-6"
+                :title="t.contact_name || t.raised_by_email"
+              >
                 {{ t.contact_name || t.raised_by_email }}
               </span>
             </td>
