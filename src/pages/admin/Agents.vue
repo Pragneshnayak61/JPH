@@ -41,99 +41,110 @@
     </div>
 
     <!-- people -->
-    <div class="mt-5 overflow-hidden rounded-lg border border-outline-gray-2">
-      <div
-        class="grid grid-cols-12 gap-3 border-b border-outline-gray-2 bg-surface-gray-1 px-4 py-2 text-p-sm font-medium text-ink-gray-6"
-      >
-        <div class="col-span-3">Person</div>
-        <div class="col-span-2">ID</div>
-        <div class="col-span-2">Access</div>
-        <div class="col-span-3">Role</div>
-        <div class="col-span-2">Status</div>
-      </div>
-
-      <div v-if="loading" class="px-4 py-10 text-center">
-        <LoadingIndicator class="mx-auto h-5 w-5 text-ink-gray-5" />
-      </div>
-
-      <div v-else-if="loadError" class="px-4 py-10 text-center">
-        <p class="text-p-base text-ink-red-3">{{ loadError }}</p>
-      </div>
-
-      <div
-        v-for="p in people"
-        v-else
-        :key="p.id"
-        class="grid grid-cols-12 items-center gap-3 border-b border-outline-gray-2 px-4 py-2.5 last:border-0"
-      >
-        <div class="col-span-3 flex min-w-0 items-center gap-2">
-          <Avatar :label="p.full_name || p.email" size="sm" />
-          <div class="min-w-0">
-            <p class="truncate text-p-base text-ink-gray-8">
-              {{ p.full_name || "—" }}
-            </p>
-            <p class="truncate text-p-sm text-ink-gray-5">{{ p.email }}</p>
-          </div>
-        </div>
-
-        <div class="col-span-2">
-          <FormControl
-            :model-value="p.agent_code ?? ''"
-            :placeholder="p.kind === 'customer' ? '—' : 'AG-01'"
-            :disabled="p.kind === 'customer' || saving === p.id"
-            @change="(e: any) => setCode(p, e.target.value)"
-          />
-        </div>
-
-        <div class="col-span-2">
-          <FormControl
-            type="select"
-            :model-value="p.kind"
-            :options="kindOptions"
-            :disabled="p.id === auth.profile?.id || saving === p.id"
-            @update:model-value="(v: string) => setKind(p, v)"
-          />
-        </div>
-
-        <div class="col-span-3">
-          <FormControl
-            type="select"
-            :model-value="p.role_id ?? ''"
-            :options="roleOptions"
-            :disabled="p.kind === 'customer' || saving === p.id"
-            @update:model-value="(v: string) => setRole(p, v)"
-          />
-        </div>
-
-        <div class="col-span-2 flex items-center gap-2">
-          <Badge :theme="p.is_active ? 'green' : 'gray'" variant="subtle">
-            {{ p.is_active ? "Active" : "Disabled" }}
-          </Badge>
-          <button
-            v-if="p.id !== auth.profile?.id"
-            class="text-p-sm text-ink-gray-6 underline hover:text-ink-gray-8"
-            :disabled="saving === p.id"
-            @click="toggleActive(p)"
+    <div class="mt-5 overflow-x-auto rounded-lg border border-outline-gray-2">
+      <table class="w-full min-w-[860px] text-p-base">
+        <thead class="bg-surface-gray-1 text-p-sm text-ink-gray-6">
+          <tr>
+            <th class="px-4 py-2 text-left font-medium">Person</th>
+            <th class="px-3 py-2 text-left font-medium">ID</th>
+            <th class="px-3 py-2 text-left font-medium">Specialization</th>
+            <th class="px-3 py-2 text-left font-medium">Access</th>
+            <th class="px-3 py-2 text-left font-medium">Role</th>
+            <th class="px-3 py-2 text-left font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="loading">
+            <td colspan="6" class="px-4 py-10 text-center">
+              <LoadingIndicator class="mx-auto h-5 w-5 text-ink-gray-5" />
+            </td>
+          </tr>
+          <tr v-else-if="loadError">
+            <td colspan="6" class="px-4 py-10 text-center text-ink-red-3">
+              {{ loadError }}
+            </td>
+          </tr>
+          <tr
+            v-for="p in people"
+            v-else
+            :key="p.id"
+            class="border-t border-outline-gray-2"
           >
-            {{ p.is_active ? "Disable" : "Enable" }}
-          </button>
-        </div>
-      </div>
-    </div>
+            <td class="px-4 py-2.5">
+              <div class="flex min-w-0 items-center gap-2">
+                <Avatar :label="p.full_name || p.email" size="sm" />
+                <div class="min-w-0">
+                  <p class="truncate text-ink-gray-8">{{ p.full_name || "—" }}</p>
+                  <p class="truncate text-p-sm text-ink-gray-5">{{ p.email }}</p>
+                </div>
+              </div>
+            </td>
 
-    <div
-      v-if="lastCreated"
-      class="mt-3 rounded-lg border border-outline-green-2 bg-surface-green-1 p-3 text-p-base text-ink-gray-8"
-    >
-      {{ lastCreated }}
+            <td class="w-28 px-3 py-2.5">
+              <FormControl
+                :model-value="p.agent_code ?? ''"
+                :placeholder="p.kind === 'customer' ? '—' : 'AG-01'"
+                :disabled="p.kind === 'customer' || saving === p.id"
+                @change="(e: any) => setCode(p, e.target.value)"
+              />
+            </td>
+
+            <td class="w-40 px-3 py-2.5">
+              <FormControl
+                :model-value="p.specialization ?? ''"
+                :placeholder="p.kind === 'customer' ? '—' : 'Network'"
+                :disabled="p.kind === 'customer' || saving === p.id"
+                @change="(e: any) => setSpecialization(p, e.target.value)"
+              />
+            </td>
+
+            <td class="w-32 px-3 py-2.5">
+              <FormControl
+                type="select"
+                :model-value="p.kind"
+                :options="kindOptions"
+                :disabled="p.id === auth.profile?.id || saving === p.id"
+                @update:model-value="(v: string) => setKind(p, v)"
+              />
+            </td>
+
+            <td class="w-40 px-3 py-2.5">
+              <FormControl
+                type="select"
+                :model-value="p.role_id ?? ''"
+                :options="roleOptions"
+                :disabled="p.kind === 'customer' || saving === p.id"
+                @update:model-value="(v: string) => setRole(p, v)"
+              />
+            </td>
+
+            <td class="px-3 py-2.5">
+              <div class="flex items-center gap-2">
+                <Badge :theme="p.is_active ? 'green' : 'gray'" variant="subtle">
+                  {{ p.is_active ? "Active" : "Disabled" }}
+                </Badge>
+                <button
+                  v-if="p.id !== auth.profile?.id"
+                  class="text-p-sm text-ink-gray-6 underline hover:text-ink-gray-8"
+                  :disabled="saving === p.id"
+                  @click="toggleActive(p)"
+                >
+                  {{ p.is_active ? "Disable" : "Enable" }}
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <ErrorMessage :message="saveError" class="mt-3" />
 
     <p class="mt-2 text-p-sm text-ink-gray-5">
-      Agents see each other by <strong>ID only</strong> &mdash; never by name
-      or email. Use anything you like here (an employee number, for example);
-      leave it blank and one is generated.
+      Agents see each other by <strong>ID and specialization only</strong>
+      &mdash; never by name or email. Specialization is what tells them who to
+      pass a ticket to, so keep it short and useful ("Network", "Billing").
+      Leave the ID blank and one is generated.
     </p>
     <p class="mt-1 text-p-sm text-ink-gray-5">
       You cannot change your own access or disable yourself &mdash; that would
@@ -287,7 +298,7 @@ type Person = {
   id: string; email: string; full_name: string | null;
   kind: "admin" | "agent" | "customer";
   role_id: string | null; is_active: boolean;
-  agent_code: string | null;
+  agent_code: string | null; specialization: string | null;
 };
 type Role = {
   id: string; name: string; description: string | null;
@@ -330,7 +341,7 @@ async function load() {
     const [{ data: p, error: e1 }, { data: r, error: e2 }] = await Promise.all([
       supabase
         .from("profiles")
-        .select("id, email, full_name, kind, role_id, is_active, agent_code")
+        .select("id, email, full_name, kind, role_id, is_active, agent_code, specialization")
         .order("kind")
         .order("email"),
       supabase.from("roles").select("*").order("name"),
@@ -379,6 +390,12 @@ async function setCode(p: Person, code: string) {
   const ok = await patch(p, { agent_code: next || null });
   // Trigger ne kya value rakhi, wo sirf reload se pata chalti hai.
   if (ok) await load();
+}
+
+function setSpecialization(p: Person, value: string) {
+  const next = value.trim();
+  if (next === (p.specialization ?? "")) return;
+  return patch(p, { specialization: next || null });
 }
 
 function setRole(p: Person, roleId: string) {

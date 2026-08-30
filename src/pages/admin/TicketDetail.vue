@@ -277,12 +277,17 @@ async function load() {
     // admin ko sab deti hai. staff_directory() agent ko sirf "Agent 1"
     // jaisa code deta hai, admin ko asli naam.
     const { data: dir } = await supabase.rpc("staff_directory");
+    // Dropdown me specialization bhi — "AG-02" akela dekhkar agent ko
+    // pata hi nahi chalta ki ticket kise dena chahiye.
+    const withRole = (d: any) =>
+      d.specialization ? `${d.label} · ${d.specialization}` : d.label;
+
     staffLabels.value = Object.fromEntries(
-      (dir ?? []).map((d: any) => [d.id, d.label])
+      (dir ?? []).map((d: any) => [d.id, withRole(d)])
     );
     agentOptions.value = [
       { label: "Unassigned", value: "" },
-      ...(dir ?? []).map((d: any) => ({ label: d.label, value: d.id })),
+      ...(dir ?? []).map((d: any) => ({ label: withRole(d), value: d.id })),
     ];
   } catch (e: any) {
     // RLS chup-chaap khali result deti hai, error nahi — isliye "not found"

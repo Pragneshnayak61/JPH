@@ -64,6 +64,9 @@
           >
             <span class="truncate text-p-sm text-ink-gray-7">
               {{ a.label }}
+              <span v-if="a.specialization" class="text-ink-gray-5">
+                · {{ a.specialization }}
+              </span>
             </span>
             <div class="h-5 rounded bg-surface-gray-2">
               <div
@@ -88,6 +91,7 @@
             <thead class="bg-surface-gray-1 text-p-sm text-ink-gray-6">
               <tr>
                 <th class="px-4 py-2 text-left font-medium">Agent</th>
+                <th class="px-4 py-2 text-left font-medium">Specialization</th>
                 <th class="px-4 py-2 text-right font-medium">Assigned</th>
                 <th class="px-4 py-2 text-right font-medium">Still open</th>
                 <th class="px-4 py-2 text-right font-medium">Resolved</th>
@@ -100,6 +104,9 @@
                 class="border-t border-outline-gray-2"
               >
                 <td class="px-4 py-2.5 text-ink-gray-8">{{ a.label }}</td>
+                <td class="px-4 py-2.5 text-ink-gray-6">
+                  {{ a.specialization || "—" }}
+                </td>
                 <td class="px-4 py-2.5 text-right tabular-nums text-ink-gray-7">
                   {{ a.assigned }}
                 </td>
@@ -111,7 +118,7 @@
                 </td>
               </tr>
               <tr v-if="!stats.length">
-                <td colspan="4" class="px-4 py-8 text-center text-ink-gray-5">
+                <td colspan="5" class="px-4 py-8 text-center text-ink-gray-5">
                   No agents yet.
                 </td>
               </tr>
@@ -129,7 +136,7 @@ import { LoadingIndicator } from "frappe-ui";
 import { computed, onMounted, ref } from "vue";
 
 type AgentStat = {
-  agent_id: string; label: string;
+  agent_id: string; label: string; specialization: string | null;
   assigned: number; open_count: number; resolved: number;
 };
 type Totals = {
