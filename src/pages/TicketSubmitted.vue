@@ -22,9 +22,20 @@
       </div>
 
       <p class="mt-4 text-p-sm text-ink-gray-5">
-        Bookmark the link below &mdash; it is the only way back to this
-        ticket, and we cannot send it to you again.
+        We saved this ticket in your browser, so you will find it on the
+        home page next time. To open it from another device, copy the link
+        below and keep it somewhere safe.
       </p>
+
+      <button
+        class="mt-3 w-full rounded-lg border border-outline-gray-2 px-3 py-2 text-left text-p-sm text-ink-gray-7 hover:bg-surface-gray-1"
+        @click="copyLink"
+      >
+        <span class="block truncate font-mono">{{ ticketUrl }}</span>
+        <span class="mt-1 block text-p-sm text-ink-gray-5">
+          {{ copied ? "Copied" : "Click to copy" }}
+        </span>
+      </button>
 
       <Button
         variant="solid"
@@ -42,8 +53,25 @@
 
 <script setup lang="ts">
 import { Button, FeatherIcon } from "frappe-ui";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 
-defineProps<{ token: string }>();
+const props = defineProps<{ token: string }>();
 const router = useRouter();
+
+const ticketUrl = computed(
+  () => `${window.location.origin}/ticket/${props.token}`
+);
+const copied = ref(false);
+
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(ticketUrl.value);
+    copied.value = true;
+    setTimeout(() => (copied.value = false), 2000);
+  } catch {
+    // clipboard http par ya permission na hone par fail hota hai.
+    // Link screen par dikh hi raha hai, user haath se copy kar lega.
+  }
+}
 </script>

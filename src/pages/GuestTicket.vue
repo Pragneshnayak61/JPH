@@ -84,6 +84,39 @@
         </div>
       </div>
 
+      <!-- is browser se bane purane tickets -->
+      <div
+        v-if="myTickets.length"
+        class="mt-5 rounded-xl border border-outline-gray-2 bg-surface-base p-4"
+      >
+        <div class="flex items-center justify-between">
+          <h2 class="text-p-base font-medium text-ink-gray-8">
+            Your recent tickets
+          </h2>
+          <button
+            class="text-p-sm text-ink-gray-5 underline hover:text-ink-gray-7"
+            @click="forgetAll"
+          >
+            Forget
+          </button>
+        </div>
+        <ul class="mt-2 divide-y divide-outline-gray-2">
+          <li v-for="t in myTickets" :key="t.token">
+            <RouterLink
+              :to="{ name: 'GuestTicketView', params: { token: t.token } }"
+              class="flex items-center justify-between py-2 text-p-base text-ink-gray-8 hover:text-ink-gray-9"
+            >
+              <span class="truncate pr-3">{{ t.subject }}</span>
+              <FeatherIcon name="chevron-right" class="h-4 w-4 shrink-0 text-ink-gray-5" />
+            </RouterLink>
+          </li>
+        </ul>
+        <p class="mt-2 text-p-sm text-ink-gray-5">
+          Saved on this device only. On another device or browser you will
+          need the ticket link.
+        </p>
+      </div>
+
       <p class="mt-4 text-center text-p-sm text-ink-gray-5">
         Already have an account?
         <RouterLink to="/login" class="underline">Sign in</RouterLink>
@@ -93,10 +126,11 @@
 </template>
 
 <script setup lang="ts">
+import { getMyTickets, forgetTickets, rememberTicket } from "@/lib/myTickets";
 import { notify } from "@/lib/notify";
 import { supabase } from "@/lib/supabase";
-import { Button, ErrorMessage, FormControl } from "frappe-ui";
-import { reactive, ref } from "vue";
+import { Button, ErrorMessage, FeatherIcon, FormControl } from "frappe-ui";
+import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
@@ -119,6 +153,13 @@ const form = reactive({
 
 const submitting = ref(false);
 const error = ref("");
+
+const myTickets = ref(getMyTickets());
+function forgetAll() {
+  forgetTickets();
+  myTickets.value = [];
+}
+onMounted(() => (myTickets.value = getMyTickets()));
 
 function validate(): string {
   if (!form.contact_name.trim()) return "Please enter your name";
@@ -157,6 +198,15 @@ async function submit() {
     // Confirmation mail. Await NAHI kar rahe — mail bhejne me 2-3 second
     // lagte hain aur user ko itni der "Submitting..." dekhna padta.
     // Mail na jaye to bhi ticket ban chuka hai, wahi zyada zaroori hai.
+    // Browser me yaad rakh lo, warna bookmark bhoolne par customer ka
+    // ticket tak pahunchne ka koi raasta hi nahi bachta.
+    rememberTicket({
+      token: data,
+      id: "",
+      subject: form.subject.trim(),
+      saved_at: new Date().toISOString(),
+    });
+
     notify("ticket_created", { public_token: data });
 
     router.push({ name: "TicketSubmitted", params: { token: data } });
