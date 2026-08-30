@@ -13,6 +13,10 @@
         warna do charts alag-alag samay dikhate aur unhe saath rakhne
         ka koi matlab hi nahi rehta.
       -->
+      <div class="flex items-center gap-2">
+      <Button variant="subtle" :loading="refreshing" @click="refresh">
+        Refresh
+      </Button>
       <div class="flex rounded-lg border border-outline-gray-2 p-0.5">
         <button
           v-for="r in RANGES"
@@ -27,6 +31,7 @@
         >
           {{ r.label }}
         </button>
+      </div>
       </div>
     </div>
 
@@ -136,7 +141,9 @@
 
 <script setup lang="ts">
 import { supabase } from "@/lib/supabase";
-import { AxisChart, DonutChart, LoadingIndicator, NumberChart } from "frappe-ui";
+import {
+  AxisChart, Button, DonutChart, LoadingIndicator, NumberChart,
+} from "frappe-ui";
 import { computed, onMounted, ref } from "vue";
 
 type AgentStat = {
@@ -246,6 +253,16 @@ async function load() {
     loading.value = false;
     refreshing.value = false;
   }
+}
+
+/**
+ * Page sirf khulte waqt data laata hai. Ticket resolve karke wapas
+ * aane par purana hi dikhta rehta tha, aur lagta tha ki kuch update
+ * hi nahi ho raha.
+ */
+async function refresh() {
+  refreshing.value = true;
+  await load();
 }
 
 async function setRange(days: number | null) {
