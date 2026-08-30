@@ -1,5 +1,14 @@
+import { useAuthStore } from "@/stores/auth";
 import { createRouter, createWebHistory } from "vue-router";
 import type { RouteRecordRaw } from "vue-router";
+
+// Bina iske `to.meta.requiresAuth` ka type `unknown` rehta hai.
+declare module "vue-router" {
+  interface RouteMeta {
+    requiresAuth?: boolean;
+    staff?: boolean;
+  }
+}
 
 /**
  * Route meta:
@@ -61,4 +70,37 @@ const routes: RouteRecordRaw[] = [
 export const router = createRouter({
   history: createWebHistory(),
   routes,
+});
+
+/**
+ * Guard. Pehle ye likha hi nahi gaya tha — routes par `requiresAuth: true`
+ * pada tha par use padhne wala koi code nahi tha, isliye /admin bina login
+ * ke khul jaata tha. (RLS ki wajah se data nahi aata tha, par page khulta tha.)
+ */
+router.beforeEach(async (to) => {
+  const auth = useAuthStore();
+
+  // Page reload par Supabase ka session async load hota hai. Iska intezaar
+  // na karein to guard session milne se PEHLE chal jaata hai aur logged-in
+  // user ko bhi login page par bhej deta hai.
+  if (!auth.ready) await auth.init();
+
+  if (!to.meta.requiresAuth) {
+    // Logged-in staff ko login page par rukne ka koi matlab nahi.
+    if (to.name === "Login" && auth.isLoggedIn && auth.isStaff) {
+      return { name: "Dashboard" };
+    }
+    return true;
+  }
+
+  if (!auth.isLoggedIn) {
+    return { name: "Login", query: { next: to.fullPath } };
+  }
+
+  // Customer login kar sakta hai, par agent desk uske liye nahi hai.
+  if (to.meta.staff && !auth.isStaff) {
+    return { name: "GuestTicket" };
+  }
+
+  return true;
 });

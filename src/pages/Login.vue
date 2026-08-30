@@ -55,10 +55,13 @@
 <script setup lang="ts">
 import { supabase } from "@/lib/supabase";
 import { Button, ErrorMessage, FormControl } from "frappe-ui";
+import { useAuthStore } from "@/stores/auth";
 import { ref } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 const router = useRouter();
+const route = useRoute();
+const auth = useAuthStore();
 const email = ref("");
 const password = ref("");
 const loading = ref(false);
@@ -77,7 +80,14 @@ async function signIn() {
       password: password.value,
     });
     if (err) throw err;
-    router.push("/admin");
+
+    // Store refresh karna zaroori hai — warna guard purana (logged-out)
+    // state dekhega aur wapas login par bhej dega.
+    await auth.init();
+
+    // Guard ne jis page se bheja tha, wahin wapas le jao.
+    const next = typeof route.query.next === "string" ? route.query.next : "/admin";
+    router.replace(next);
   } catch (e: any) {
     error.value = e?.message || "Could not sign in";
   } finally {

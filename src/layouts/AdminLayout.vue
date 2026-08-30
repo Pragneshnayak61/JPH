@@ -49,26 +49,22 @@
 </template>
 
 <script setup lang="ts">
-import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/stores/auth";
 import { Avatar, FeatherIcon } from "frappe-ui";
-import { onMounted, ref } from "vue";
+import { computed } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
-const userEmail = ref("");
+const auth = useAuthStore();
+const userEmail = computed(() => auth.profile?.email ?? "");
 
 const nav = [
   { to: "/admin", label: "Dashboard", icon: "home" },
   { to: "/admin/agents", label: "Agents", icon: "users" },
 ];
 
-onMounted(async () => {
-  const { data } = await supabase.auth.getUser();
-  userEmail.value = data.user?.email ?? "";
-});
-
 async function signOut() {
-  await supabase.auth.signOut();
-  router.push("/login");
+  await auth.signOut();
+  router.push({ name: "Login" });
 }
 </script>
