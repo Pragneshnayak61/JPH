@@ -7,6 +7,7 @@ declare module "vue-router" {
   interface RouteMeta {
     requiresAuth?: boolean;
     staff?: boolean;
+    admin?: boolean;
   }
 }
 
@@ -34,6 +35,14 @@ const routes: RouteRecordRaw[] = [
     props: true,
   },
   {
+    // Guest apna ticket yahan dekhta hai. Token hi uska "password" hai —
+    // random uuid, guess nahi ho sakta.
+    path: "/ticket/:token",
+    name: "GuestTicketView",
+    component: () => import("@/pages/GuestTicketView.vue"),
+    props: true,
+  },
+  {
     path: "/login",
     name: "Login",
     component: () => import("@/pages/Login.vue"),
@@ -57,9 +66,12 @@ const routes: RouteRecordRaw[] = [
         props: true,
       },
       {
+        // Sirf admin. Is page par sabke naam aur email dikhte hain, jo
+        // agent ko nahi dikhne chahiye.
         path: "agents",
         name: "Agents",
         component: () => import("@/pages/admin/Agents.vue"),
+        meta: { admin: true },
       },
     ],
   },
@@ -100,6 +112,12 @@ router.beforeEach(async (to) => {
   // Customer login kar sakta hai, par agent desk uske liye nahi hai.
   if (to.meta.staff && !auth.isStaff) {
     return { name: "GuestTicket" };
+  }
+
+  // Kuch pages sirf admin ke liye — jaise People, jahan sabke naam
+  // aur email dikhte hain.
+  if (to.meta.admin && !auth.isAdmin) {
+    return { name: "Dashboard" };
   }
 
   return true;

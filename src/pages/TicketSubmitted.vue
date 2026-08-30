@@ -22,10 +22,18 @@
       </div>
 
       <p class="mt-4 text-p-sm text-ink-gray-5">
-        Keep this safe &mdash; you will need it to check your ticket.
+        Bookmark the link below &mdash; it is the only way back to this
+        ticket, and we cannot send it to you again.
       </p>
 
-      <Button variant="subtle" class="mt-5 w-full" @click="router.push('/')">
+      <Button
+        variant="solid"
+        class="mt-4 w-full"
+        @click="router.push({ name: 'GuestTicketView', params: { token } })"
+      >
+        View my ticket
+      </Button>
+      <Button variant="subtle" class="mt-2 w-full" @click="router.push('/')">
         Submit another ticket
       </Button>
     </div>

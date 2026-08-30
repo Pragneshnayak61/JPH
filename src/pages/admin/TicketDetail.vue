@@ -60,9 +60,9 @@
           "
         >
           <div class="mb-2 flex items-center gap-2">
-            <Avatar :label="m.author_name || m.author_email || 'Agent'" size="sm" />
+            <Avatar :label="messageAuthor(m)" size="sm" />
             <span class="text-p-sm font-medium text-ink-gray-8">
-              {{ m.author_name || m.author_email || "Agent" }}
+              {{ messageAuthor(m) }}
             </span>
             <Badge v-if="m.is_internal" theme="orange" variant="subtle">
               Internal note
@@ -200,6 +200,7 @@ type Ticket = {
 };
 type Message = {
   id: number; body: string; is_internal: boolean;
+  author_id: string | null;
   author_name: string | null; author_email: string | null; created_at: string;
 };
 
@@ -207,6 +208,23 @@ const ticket = ref<Ticket | null>(null);
 const messages = ref<Message[]>([]);
 const assignedTo = ref<string>("");
 const agentOptions = ref<{ label: string; value: string }[]>([]);
+const staffLabels = ref<Record<string, string>>({});
+
+/**
+ * Message par kiska naam dikhana hai.
+ *
+ * author_name me agent ka ASLI naam save hota hai (customer ko wahi
+ * dikhna chahiye). Par yahan agent-facing screen hai, aur ek agent ko
+ * doosre ka naam nahi dikhna chahiye — isliye author_id se directory
+ * ka label lete hain, jo admin ko naam aur agent ko code deta hai.
+ * Customer ke apne reply par author_id null hota hai, wahan naam theek hai.
+ */
+function messageAuthor(m: Message) {
+  if (m.author_id && staffLabels.value[m.author_id]) {
+    return staffLabels.value[m.author_id];
+  }
+  return m.author_name || m.author_email || "Customer";
+}
 
 const loading = ref(true);
 const error = ref("");
@@ -250,22 +268,21 @@ async function load() {
 
     const { data: m } = await supabase
       .from("ticket_messages")
-      .select("id, body, is_internal, author_name, author_email, created_at")
+      .select("id, body, is_internal, author_id, author_name, author_email, created_at")
       .eq("ticket_id", Number(props.id))
       .order("created_at");
     messages.value = (m as Message[]) ?? [];
 
-    const { data: a } = await supabase
-      .from("profiles")
-      .select("id, full_name, email")
-      .in("kind", ["admin", "agent"])
-      .eq("is_active", true);
+    // profiles se seedha nahi padh sakte — ab RLS sirf apni profile aur
+    // admin ko sab deti hai. staff_directory() agent ko sirf "Agent 1"
+    // jaisa code deta hai, admin ko asli naam.
+    const { data: dir } = await supabase.rpc("staff_directory");
+    staffLabels.value = Object.fromEntries(
+      (dir ?? []).map((d: any) => [d.id, d.label])
+    );
     agentOptions.value = [
       { label: "Unassigned", value: "" },
-      ...(a ?? []).map((p: any) => ({
-        label: p.full_name || p.email,
-        value: p.id,
-      })),
+      ...(dir ?? []).map((d: any) => ({ label: d.label, value: d.id })),
     ];
   } catch (e: any) {
     // RLS chup-chaap khali result deti hai, error nahi — isliye "not found"

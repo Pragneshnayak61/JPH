@@ -58,10 +58,14 @@ const router = useRouter();
 const auth = useAuthStore();
 const userEmail = computed(() => auth.profile?.email ?? "");
 
-const nav = [
+// People sirf admin ko. Guard bhi rokta hai, par link dikhana hi galat
+// hai — user click karke bounce ho, isse bura kuch nahi.
+const nav = computed(() => [
   { to: "/admin", label: "Dashboard", icon: "home" },
-  { to: "/admin/agents", label: "Agents", icon: "users" },
-];
+  ...(auth.isAdmin
+    ? [{ to: "/admin/agents", label: "People", icon: "users" }]
+    : []),
+]);
 
 async function signOut() {
   await auth.signOut();
