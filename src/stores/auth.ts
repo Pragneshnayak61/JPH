@@ -10,6 +10,8 @@ export type Profile = {
   kind: "admin" | "agent" | "customer";
   role_id: string | null;
   is_active: boolean;
+  agent_code: string | null;
+  specialization: string | null;
 };
 
 export type Role = {
@@ -54,7 +56,7 @@ export const useAuthStore = defineStore("auth", () => {
     }
     const { data: p } = await supabase
       .from("profiles")
-      .select("id, email, full_name, kind, role_id, is_active")
+      .select("id, email, full_name, kind, role_id, is_active, agent_code, specialization")
       .eq("id", session.value.user.id)
       .single();
     profile.value = (p as Profile) ?? null;

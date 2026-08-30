@@ -31,10 +31,19 @@
       </nav>
 
       <div class="border-t border-outline-gray-2 p-2">
-        <div class="flex items-center gap-2 px-2 py-1.5">
+        <RouterLink
+          to="/admin/profile"
+          class="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-surface-gray-2"
+          active-class="bg-surface-gray-3"
+        >
           <Avatar :label="userEmail" size="sm" />
-          <span class="truncate text-p-sm text-ink-gray-7">{{ userEmail }}</span>
-        </div>
+          <div class="min-w-0 leading-tight">
+            <p class="truncate text-p-sm text-ink-gray-7">{{ userEmail }}</p>
+            <p class="text-p-sm text-ink-gray-5">
+              {{ auth.profile?.agent_code || "My profile" }}
+            </p>
+          </div>
+        </RouterLink>
         <button
           class="mt-1 flex w-full items-center gap-2 rounded px-2 py-1.5 text-p-sm text-ink-gray-6 hover:bg-surface-gray-2"
           @click="signOut"

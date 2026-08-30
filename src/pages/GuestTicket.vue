@@ -93,37 +93,51 @@
         </div>
       </div>
 
-      <!-- is browser se bane purane tickets -->
-      <div
-        v-if="myTickets.length"
-        class="mt-5 rounded-xl border border-outline-gray-2 bg-surface-base p-4"
-      >
-        <div class="flex items-center justify-between">
-          <h2 class="text-p-base font-medium text-ink-gray-8">
-            Your recent tickets
-          </h2>
-          <button
-            class="text-p-sm text-ink-gray-5 underline hover:text-ink-gray-7"
-            @click="forgetAll"
-          >
-            Forget
-          </button>
-        </div>
-        <ul class="mt-2 divide-y divide-outline-gray-2">
-          <li v-for="t in myTickets" :key="t.token">
-            <RouterLink
-              :to="{ name: 'GuestTicketView', params: { token: t.token } }"
-              class="flex items-center justify-between py-2 text-p-base text-ink-gray-8 hover:text-ink-gray-9"
-            >
-              <span class="truncate pr-3">{{ t.subject }}</span>
-              <FeatherIcon name="chevron-right" class="h-4 w-4 shrink-0 text-ink-gray-5" />
-            </RouterLink>
-          </li>
-        </ul>
-        <p class="mt-2 text-p-sm text-ink-gray-5">
-          Saved on this device only. On another device or browser you will
-          need the ticket link.
+      <!--
+        Pehle poori list yahin khuli rehti thi. Form ke neeche list
+        dikhane se page bhara-bhara lagta tha aur asli kaam (ticket
+        bhejna) peeche chala jaata. Ab sirf ek line ka link.
+      -->
+      <div v-if="myTickets.length" class="mt-4 text-center">
+        <RouterLink
+          :to="{ name: 'MyTickets' }"
+          class="text-p-sm text-ink-gray-6 underline hover:text-ink-gray-8"
+        >
+          View your {{ myTickets.length }}
+          {{ myTickets.length === 1 ? "ticket" : "tickets" }}
+        </RouterLink>
+      </div>
+
+      <!-- team: naam nahi, sirf kaam -->
+      <div v-if="team.length" class="mt-8">
+        <h2 class="text-p-base font-medium text-ink-gray-8">
+          Who picks this up
+        </h2>
+        <p class="mt-0.5 text-p-sm text-ink-gray-6">
+          Our team, by what they handle
         </p>
+        <div class="mt-3 grid gap-2 sm:grid-cols-2">
+          <div
+            v-for="m in team"
+            :key="m.code"
+            class="rounded-lg border border-outline-gray-2 bg-surface-base p-3"
+          >
+            <div class="flex items-center gap-2">
+              <span
+                class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-p-sm font-medium text-white"
+                :style="{ background: s.accent_color }"
+              >
+                {{ m.code.replace(/[^0-9]/g, "") || "?" }}
+              </span>
+              <p class="truncate text-p-base font-medium text-ink-gray-8">
+                {{ m.specialization || m.code }}
+              </p>
+            </div>
+            <p v-if="m.mastery" class="mt-1.5 text-p-sm text-ink-gray-6">
+              {{ m.mastery }}
+            </p>
+          </div>
+        </div>
       </div>
 
       <p class="mt-4 text-center text-p-sm text-ink-gray-5">
@@ -135,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-import { getMyTickets, forgetTickets, rememberTicket } from "@/lib/myTickets";
+import { getMyTickets, rememberTicket } from "@/lib/myTickets";
 import { notify } from "@/lib/notify";
 import { uploadImage } from "@/lib/uploadImage";
 import { useSettingsStore } from "@/stores/settings";
@@ -171,13 +185,16 @@ const settingsStore = useSettingsStore();
 const s = computed(() => settingsStore.settings);
 
 const myTickets = ref(getMyTickets());
-function forgetAll() {
-  forgetTickets();
-  myTickets.value = [];
-}
-onMounted(() => {
+const team = ref<
+  { code: string; specialization: string | null; mastery: string | null }[]
+>([]);
+onMounted(async () => {
   myTickets.value = getMyTickets();
   settingsStore.load();
+  // Team na aaye to section chhupa rehta hai — koi error nahi dikhate,
+  // ye page ka zaroori hissa nahi hai.
+  const { data } = await supabase.rpc("public_team");
+  team.value = data ?? [];
 });
 
 function validate(): string {

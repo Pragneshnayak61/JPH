@@ -43,6 +43,11 @@ const routes: RouteRecordRaw[] = [
     props: true,
   },
   {
+    path: "/my-tickets",
+    name: "MyTickets",
+    component: () => import("@/pages/MyTickets.vue"),
+  },
+  {
     path: "/login",
     name: "Login",
     component: () => import("@/pages/Login.vue"),
@@ -72,6 +77,11 @@ const routes: RouteRecordRaw[] = [
         name: "Agents",
         component: () => import("@/pages/admin/Agents.vue"),
         meta: { admin: true },
+      },
+      {
+        path: "profile",
+        name: "MyProfile",
+        component: () => import("@/pages/admin/MyProfile.vue"),
       },
       {
         path: "analytics",
