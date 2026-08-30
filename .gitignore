@@ -6,3 +6,6 @@ dist
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
+
+# Cloudflare wrangler
+.wrangler

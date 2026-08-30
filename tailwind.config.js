@@ -12,7 +12,12 @@ export default {
     // final CSS me aayengi hi nahi aur design toota hua dikhega.
     "./node_modules/frappe-ui/src/**/*.{vue,js,ts,jsx,tsx}",
   ],
-  safelist: [{ pattern: /!(text|bg)-/, variants: ["hover", "active"] }],
+  // NOTE: yahan pehle safelist thi:
+  //   safelist: [{ pattern: /!(text|bg)-/, variants: ["hover", "active"] }]
+  // Wo Frappe Helpdesk se copy ki thi, par hamare liye bekaar hai —
+  // frappe-ui me `!text-`/`!bg-` sirf 5 jagah, aur sab STATIC strings me.
+  // Unhe upar wala content glob pehle hi scan kar leta hai.
+  // Safelist har color x hover/active ki hazaaron classes bana rahi thi.
   theme: {
     extend: {
       height: { 18: "68px" },

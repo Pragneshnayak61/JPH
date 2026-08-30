@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "it-helpdesk",
+  "compatibility_date": "2026-08-28",
+  "observability": { "enabled": true },
+  "assets": {
+    // Ye SPA routing sambhalta hai: /login ya /admin par direct jaane par
+    // index.html serve hoti hai aur Vue router aage ka kaam karta hai.
+    //
+    // Pehle iske liye public/_redirects me "/* /index.html 200" likha tha,
+    // par Cloudflare ne use REJECT kar diya:
+    //   "Line 3: Infinite loop detected in this rule"
+    // Kyunki Workers Assets ye kaam khud karta hai, aur dono ek saath
+    // takra jaate hain. Isliye _redirects hata di gayi.
+    "not_found_handling": "single-page-application"
+  }
+}
