@@ -4,15 +4,15 @@
       <!-- header -->
       <div class="mb-6 flex items-center gap-3">
         <div
-          class="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-gray-7 text-lg font-semibold text-white"
+          class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg text-lg font-semibold text-white"
+          :style="{ background: s.logo_url ? '#fff' : s.accent_color }"
         >
-          J
+          <img v-if="s.logo_url" :src="s.logo_url" alt="" class="h-full w-full object-contain" />
+          <span v-else>{{ s.company_name.charAt(0).toUpperCase() }}</span>
         </div>
-        <div>
-          <h1 class="text-lg font-semibold text-ink-gray-9">JPH Support</h1>
-          <p class="text-sm text-ink-gray-6">
-            Tell us what went wrong &mdash; no account needed
-          </p>
+        <div class="min-w-0">
+          <h1 class="text-lg font-semibold text-ink-gray-9">{{ s.guest_heading }}</h1>
+          <p class="text-sm text-ink-gray-6">{{ s.guest_intro }}</p>
         </div>
       </div>
 
@@ -79,7 +79,7 @@
             :loading="submitting"
             @click="submit"
           >
-            Submit ticket
+            {{ s.guest_submit_label }}
           </Button>
         </div>
       </div>
@@ -128,9 +128,10 @@
 <script setup lang="ts">
 import { getMyTickets, forgetTickets, rememberTicket } from "@/lib/myTickets";
 import { notify } from "@/lib/notify";
+import { useSettingsStore } from "@/stores/settings";
 import { supabase } from "@/lib/supabase";
 import { Button, ErrorMessage, FeatherIcon, FormControl } from "frappe-ui";
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
@@ -154,12 +155,18 @@ const form = reactive({
 const submitting = ref(false);
 const error = ref("");
 
+const settingsStore = useSettingsStore();
+const s = computed(() => settingsStore.settings);
+
 const myTickets = ref(getMyTickets());
 function forgetAll() {
   forgetTickets();
   myTickets.value = [];
 }
-onMounted(() => (myTickets.value = getMyTickets()));
+onMounted(() => {
+  myTickets.value = getMyTickets();
+  settingsStore.load();
+});
 
 function validate(): string {
   if (!form.contact_name.trim()) return "Please enter your name";

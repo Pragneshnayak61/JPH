@@ -3,11 +3,13 @@
     <div class="w-full max-w-sm">
       <div class="mb-6 text-center">
         <div
-          class="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-surface-gray-7 text-lg font-semibold text-white"
+          class="mx-auto mb-3 flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg text-lg font-semibold text-white"
+          :style="{ background: s.logo_url ? '#fff' : s.accent_color }"
         >
-          J
+          <img v-if="s.logo_url" :src="s.logo_url" alt="" class="h-full w-full object-contain" />
+          <span v-else>{{ s.company_name.charAt(0).toUpperCase() }}</span>
         </div>
-        <h1 class="text-lg font-semibold text-ink-gray-9">JPH Helpdesk</h1>
+        <h1 class="text-lg font-semibold text-ink-gray-9">{{ s.company_name }}</h1>
         <p class="mt-1 text-p-sm text-ink-gray-6">For agents and admins</p>
       </div>
 
@@ -56,12 +58,16 @@
 import { supabase } from "@/lib/supabase";
 import { Button, ErrorMessage, FormControl } from "frappe-ui";
 import { useAuthStore } from "@/stores/auth";
-import { ref } from "vue";
+import { useSettingsStore } from "@/stores/settings";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
+const settingsStore = useSettingsStore();
+const s = computed(() => settingsStore.settings);
+onMounted(() => settingsStore.load());
 const email = ref("");
 const password = ref("");
 const loading = ref(false);

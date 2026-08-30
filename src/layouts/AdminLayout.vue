@@ -6,11 +6,15 @@
     >
       <div class="flex items-center gap-2 px-4 py-3">
         <div
-          class="flex h-7 w-7 items-center justify-center rounded bg-surface-gray-7 text-sm font-semibold text-white"
+          class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded text-sm font-semibold text-white"
+          :style="{ background: s.logo_url ? '#fff' : s.accent_color }"
         >
-          J
+          <img v-if="s.logo_url" :src="s.logo_url" alt="" class="h-full w-full object-contain" />
+          <span v-else>{{ s.company_name.charAt(0).toUpperCase() }}</span>
         </div>
-        <span class="text-base font-medium text-ink-gray-8">JPH Helpdesk</span>
+        <span class="truncate text-base font-medium text-ink-gray-8">
+          {{ s.company_name }}
+        </span>
       </div>
 
       <nav class="flex-1 space-y-0.5 px-2 py-2">
@@ -50,13 +54,18 @@
 
 <script setup lang="ts">
 import { useAuthStore } from "@/stores/auth";
+import { useSettingsStore } from "@/stores/settings";
 import { Avatar, FeatherIcon } from "frappe-ui";
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
 const auth = useAuthStore();
+const settingsStore = useSettingsStore();
+const s = computed(() => settingsStore.settings);
 const userEmail = computed(() => auth.profile?.email ?? "");
+
+onMounted(() => settingsStore.load());
 
 // People sirf admin ko. Guard bhi rokta hai, par link dikhana hi galat
 // hai — user click karke bounce ho, isse bura kuch nahi.
@@ -64,6 +73,9 @@ const nav = computed(() => [
   { to: "/admin", label: "Dashboard", icon: "home" },
   ...(auth.isAdmin
     ? [{ to: "/admin/agents", label: "People", icon: "users" }]
+    : []),
+  ...(auth.can("can_change_settings")
+    ? [{ to: "/admin/settings", label: "Settings", icon: "settings" }]
     : []),
 ]);
 

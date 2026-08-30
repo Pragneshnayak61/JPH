@@ -9,10 +9,8 @@
         <FeatherIcon name="check" class="h-6 w-6 text-ink-green-3" />
       </div>
 
-      <h1 class="text-lg font-semibold text-ink-gray-9">Ticket submitted</h1>
-      <p class="mt-2 text-p-base text-ink-gray-6">
-        Our team will reply to your email.
-      </p>
+      <h1 class="text-lg font-semibold text-ink-gray-9">{{ s.thanks_title }}</h1>
+      <p class="mt-2 text-p-base text-ink-gray-6">{{ s.thanks_message }}</p>
 
       <div class="mt-5 rounded-lg bg-surface-gray-2 p-3">
         <p class="text-p-sm text-ink-gray-6">Your ticket reference</p>
@@ -53,7 +51,8 @@
 
 <script setup lang="ts">
 import { Button, FeatherIcon } from "frappe-ui";
-import { computed, ref } from "vue";
+import { useSettingsStore } from "@/stores/settings";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 
 const props = defineProps<{ token: string }>();
@@ -63,6 +62,10 @@ const ticketUrl = computed(
   () => `${window.location.origin}/ticket/${props.token}`
 );
 const copied = ref(false);
+
+const settingsStore = useSettingsStore();
+const s = computed(() => settingsStore.settings);
+onMounted(() => settingsStore.load());
 
 async function copyLink() {
   try {
