@@ -20,11 +20,63 @@
       </div>
     </div>
 
+    <!-- Bulk bar. Tabhi dikhta hai jab kuch chuna ho — hamesha dikhane
+         se ek khali patti pade rehti hai jo jagah bhi khaati hai aur
+         batati kuch nahi. -->
+    <div
+      v-if="selected.size"
+      class="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-outline-blue-2 bg-surface-blue-1 px-4 py-2.5"
+    >
+      <span class="text-p-base font-medium text-ink-gray-8">
+        {{ selected.size }} selected
+      </span>
+
+      <div class="flex items-center gap-2">
+        <span class="text-p-sm text-ink-gray-6">Assign to</span>
+        <FormControl
+          type="select"
+          :model-value="bulkAgent"
+          :options="agentOptions"
+          :disabled="bulkBusy"
+          @update:model-value="(v: string) => bulkAssign(v)"
+        />
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span class="text-p-sm text-ink-gray-6">Status</span>
+        <FormControl
+          type="select"
+          :model-value="''"
+          :options="bulkStatusOptions"
+          :disabled="bulkBusy"
+          @update:model-value="(v: string) => bulkStatus(v)"
+        />
+      </div>
+
+      <LoadingIndicator v-if="bulkBusy" class="h-4 w-4 text-ink-gray-5" />
+
+      <button
+        class="ml-auto text-p-sm text-ink-gray-6 underline hover:text-ink-gray-8"
+        @click="selected.clear()"
+      >
+        Clear
+      </button>
+    </div>
+
     <!-- ticket list -->
     <div class="mt-6 overflow-x-auto rounded-lg border border-outline-gray-2">
       <table class="w-full min-w-[820px] text-p-base">
         <thead class="bg-surface-gray-1 text-p-sm text-ink-gray-6">
           <tr>
+            <th class="w-10 px-3 py-2">
+              <input
+                type="checkbox"
+                class="rounded"
+                :checked="allSelected"
+                :indeterminate.prop="selected.size > 0 && !allSelected"
+                @change="toggleAll"
+              />
+            </th>
             <th class="w-16 px-4 py-2 text-left font-medium">ID</th>
             <!-- Subject par koi width nahi: bachi hui saari jagah isi ko
                  milti hai. Baaki columns ko fix width di hai, warna wo
@@ -40,17 +92,17 @@
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="7" class="px-4 py-10 text-center">
+            <td colspan="8" class="px-4 py-10 text-center">
               <LoadingIndicator class="mx-auto h-5 w-5 text-ink-gray-5" />
             </td>
           </tr>
           <tr v-else-if="error">
-            <td colspan="7" class="px-4 py-10 text-center text-ink-red-3">
+            <td colspan="8" class="px-4 py-10 text-center text-ink-red-3">
               {{ error }}
             </td>
           </tr>
           <tr v-else-if="!tickets.length">
-            <td colspan="7" class="px-4 py-10 text-center text-ink-gray-5">
+            <td colspan="8" class="px-4 py-10 text-center text-ink-gray-5">
               No tickets yet.
             </td>
           </tr>
@@ -61,6 +113,16 @@
             class="cursor-pointer border-t border-outline-gray-2 hover:bg-surface-gray-1"
             @click="router.push(`/admin/tickets/${t.id}`)"
           >
+            <!-- @click.stop: bina iske checkbox dabate hi row ka click
+                 bhi chalta hai aur ticket khul jaata hai. -->
+            <td class="px-3 py-2.5" @click.stop>
+              <input
+                type="checkbox"
+                class="rounded"
+                :checked="selected.has(t.id)"
+                @change="toggleOne(t.id)"
+              />
+            </td>
             <td class="px-4 py-2.5 font-mono text-p-sm text-ink-gray-5">
               {{ t.id }}
             </td>
@@ -207,6 +269,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth";
 import {
   Avatar, Badge, Button, Dialog, ErrorMessage, FormControl, LoadingIndicator,
+  toast,
 } from "frappe-ui";
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
@@ -251,6 +314,79 @@ const stats = computed(() => {
     { label: "Resolved", value: by("resolved") },
   ];
 });
+
+// ---------------------------------------------------------------- bulk
+// Set isliye ki .has() O(1) hai. 77 rows par har checkbox render me
+// array.includes() chalana bekaar ka kaam hai.
+const selected = reactive(new Set<number>());
+const bulkAgent = ref("");
+const bulkBusy = ref(false);
+
+const agentOptions = computed(() => [
+  { label: "Choose agent...", value: "" },
+  { label: "Unassign", value: "__none__" },
+  ...Object.entries(staff.value).map(([id, d]) => ({
+    label: d.specialization ? `${d.label} · ${d.specialization}` : d.label,
+    value: id,
+  })),
+]);
+
+const bulkStatusOptions = [
+  { label: "Change status...", value: "" },
+  { label: "Open", value: "open" },
+  { label: "Replied", value: "replied" },
+  { label: "Resolved", value: "resolved" },
+  { label: "Closed", value: "closed" },
+];
+
+const allSelected = computed(
+  () => tickets.value.length > 0 && selected.size === tickets.value.length
+);
+
+function toggleAll() {
+  if (allSelected.value) selected.clear();
+  else tickets.value.forEach((t) => selected.add(t.id));
+}
+
+function toggleOne(id: number) {
+  if (selected.has(id)) selected.delete(id);
+  else selected.add(id);
+}
+
+async function applyToSelected(changes: Record<string, unknown>, done: string) {
+  bulkBusy.value = true;
+  try {
+    const ids = [...selected];
+    const { error } = await supabase
+      .from("tickets")
+      .update(changes)
+      .in("id", ids);
+    if (error) throw error;
+    toast.success(`${ids.length} ${ids.length === 1 ? "ticket" : "tickets"} ${done}`);
+    selected.clear();
+    await load();
+  } catch (e: any) {
+    toast.error(e?.message || "Could not update the tickets");
+  } finally {
+    bulkBusy.value = false;
+    bulkAgent.value = "";
+  }
+}
+
+function bulkAssign(v: string) {
+  if (!v) return;
+  // "Unassign" ke liye khali string nahi bhej sakte — assigned_to uuid
+  // column hai aur "" uske liye invalid hai.
+  applyToSelected(
+    { assigned_to: v === "__none__" ? null : v },
+    v === "__none__" ? "unassigned" : "assigned"
+  );
+}
+
+function bulkStatus(v: string) {
+  if (!v) return;
+  applyToSelected({ status: v }, "updated");
+}
 
 function formatDue(d: string) {
   return new Date(d).toLocaleDateString(undefined, {
