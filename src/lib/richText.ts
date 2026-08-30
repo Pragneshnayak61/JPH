@@ -17,9 +17,11 @@ export function safeHtml(input: string | null | undefined): string {
     ALLOWED_TAGS: [
       "p", "br", "strong", "em", "u", "s", "code", "pre",
       "ul", "ol", "li", "blockquote", "h1", "h2", "h3", "h4",
-      "a", "hr",
+      "a", "hr", "img",
     ],
-    ALLOWED_ATTR: ["href", "target", "rel"],
+    // img ke liye src/alt chahiye. `onerror` jaise attributes yahan nahi
+    // hain — wahi to XSS ka sabse aam raasta hai.
+    ALLOWED_ATTR: ["href", "target", "rel", "src", "alt", "width", "height"],
     // javascript: aur data: URLs band. Ek <a href="javascript:..."> hi
     // kaafi hai click par code chalane ke liye.
     ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|tel:|#|\/)/i,

@@ -1,9 +1,34 @@
 <template>
   <div class="p-6">
-    <h1 class="text-xl font-semibold text-ink-gray-9">Analytics</h1>
-    <p class="mt-1 text-p-base text-ink-gray-6">
-      How the queue is doing and who is closing tickets
-    </p>
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h1 class="text-xl font-semibold text-ink-gray-9">Analytics</h1>
+        <p class="mt-1 text-p-base text-ink-gray-6">
+          How the queue is doing and who is closing tickets
+        </p>
+      </div>
+
+      <!--
+        Ek hi filter row, sabse upar. Har chart ka apna filter nahi —
+        warna do charts alag-alag samay dikhate aur unhe saath rakhne
+        ka koi matlab hi nahi rehta.
+      -->
+      <div class="flex rounded-lg border border-outline-gray-2 p-0.5">
+        <button
+          v-for="r in RANGES"
+          :key="r.label"
+          class="rounded-md px-3 py-1 text-p-sm transition-colors"
+          :class="
+            range === r.days
+              ? 'bg-surface-gray-3 font-medium text-ink-gray-9'
+              : 'text-ink-gray-6 hover:text-ink-gray-8'
+          "
+          @click="setRange(r.days)"
+        >
+          {{ r.label }}
+        </button>
+      </div>
+    </div>
 
     <div v-if="loading" class="py-16 text-center">
       <LoadingIndicator class="mx-auto h-5 w-5 text-ink-gray-5" />
@@ -13,75 +38,53 @@
       <p class="text-p-base text-ink-red-3">{{ error }}</p>
     </div>
 
+    <!-- Refetch par poora page khali nahi karte. Skeleton flash me
+         layout uchhalta hai; halka karke rakhna behtar hai. -->
     <template v-else>
-      <!-- stat tiles. Ek number ki kahani ke liye chart banana bekaar hai. -->
-      <div class="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div :class="refreshing ? 'opacity-50 transition-opacity' : ''">
+      <!--
+        Stat tiles. NumberChart apna card khud nahi banata, isliye border
+        yahan. Ek number ki kahani ke liye chart banana bekaar hota hai.
+      -->
+      <div class="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div
           v-for="t in tiles"
-          :key="t.label"
-          class="rounded-lg border border-outline-gray-2 p-4"
+          :key="t.title"
+          class="overflow-hidden rounded-lg border border-outline-gray-2"
         >
-          <div class="flex items-center gap-1.5">
-            <span
-              v-if="t.dot"
-              class="h-1.5 w-1.5 rounded-full"
-              :class="t.dot"
-            ></span>
-            <p class="text-p-sm text-ink-gray-6">{{ t.label }}</p>
-          </div>
-          <p class="mt-1 text-2xl font-semibold text-ink-gray-9">
-            {{ t.value }}
-          </p>
+          <NumberChart :config="t" />
         </div>
       </div>
 
-      <!-- chart -->
-      <section class="mt-6 rounded-lg border border-outline-gray-2 p-4">
-        <h2 class="text-p-base font-medium text-ink-gray-8">
-          Tickets resolved
-        </h2>
-        <p class="mt-0.5 text-p-sm text-ink-gray-5">
-          Counted when a ticket is first marked resolved or closed
-        </p>
-
-        <p
-          v-if="!stats.length"
-          class="py-10 text-center text-p-base text-ink-gray-5"
-        >
-          No agents yet.
-        </p>
-
-        <!--
-          Horizontal bars: labels naam hain, jo vertical bars ke neeche
-          tirche karne padte. Ek hi rang har bar par — ye pehchaan hai,
-          magnitude nahi; bar ki lambai wahi kaam pehle se kar rahi hai.
-        -->
-        <div v-else class="mt-4 space-y-2.5">
-          <div
-            v-for="a in stats"
-            :key="a.agent_id"
-            class="grid grid-cols-[minmax(80px,140px)_1fr_auto] items-center gap-3"
-          >
-            <span class="truncate text-p-sm text-ink-gray-7">
-              {{ a.label }}
-              <span v-if="a.specialization" class="text-ink-gray-5">
-                · {{ a.specialization }}
-              </span>
-            </span>
-            <div class="h-5 rounded bg-surface-gray-2">
-              <div
-                class="h-5 rounded bg-surface-blue-5 transition-[width] duration-300"
-                :style="{ width: barWidth(a.resolved) }"
-              ></div>
-            </div>
-            <span class="w-8 text-right text-p-sm tabular-nums text-ink-gray-7">
-              {{ a.resolved }}
-            </span>
+      <div class="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <!-- resolved per agent -->
+        <div class="rounded-lg border border-outline-gray-2 p-4">
+          <div class="h-[320px]">
+            <AxisChart v-if="stats.length" :config="resolvedChart" />
+            <p
+              v-else
+              class="flex h-full items-center justify-center text-p-base text-ink-gray-5"
+            >
+              No agents yet.
+            </p>
           </div>
         </div>
-      </section>
 
-      <!-- table: har value yahan bhi milti hai, sirf chart par nirbhar nahi -->
+        <!-- status breakdown -->
+        <div class="rounded-lg border border-outline-gray-2 p-4">
+          <div class="h-[320px]">
+            <DonutChart v-if="totals?.total" :config="statusChart" />
+            <p
+              v-else
+              class="flex h-full items-center justify-center text-p-base text-ink-gray-5"
+            >
+              No tickets yet.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table: har value chart ke bina bhi padhi ja sake -->
       <section class="mt-6">
         <h2 class="text-p-base font-medium text-ink-gray-8">By agent</h2>
         <div
@@ -126,13 +129,14 @@
           </table>
         </div>
       </section>
+      </div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { supabase } from "@/lib/supabase";
-import { LoadingIndicator } from "frappe-ui";
+import { AxisChart, DonutChart, LoadingIndicator, NumberChart } from "frappe-ui";
 import { computed, onMounted, ref } from "vue";
 
 type AgentStat = {
@@ -141,42 +145,96 @@ type AgentStat = {
 };
 type Totals = {
   total: number; open: number; replied: number; resolved: number;
-  closed: number; unassigned: number; last_7_days: number;
+  closed: number; unassigned: number;
 };
+
+const RANGES = [
+  { label: "7 days", days: 7 },
+  { label: "30 days", days: 30 },
+  { label: "90 days", days: 90 },
+  { label: "All time", days: null as number | null },
+];
 
 const stats = ref<AgentStat[]>([]);
 const totals = ref<Totals | null>(null);
+const range = ref<number | null>(30);
 const loading = ref(true);
+const refreshing = ref(false);
 const error = ref("");
+
+/**
+ * Status ke rang. Ye frappe-ui ke apne palette se hain, par 400-step
+ * nahi — wo itne halke hain ki colour-blind reader ke liye green aur
+ * gray me farq hi nahi bachta (validator me ΔE 4.0 aaya tha).
+ *
+ * "Closed" ke liye gray ki jagah violet hai: gray ka chroma 0 hota hai,
+ * yani wo rang ginta hi nahi aur baaki se takraata hai. Is set ko
+ * validator par chalaya hai — saare checks pass.
+ */
+const STATUS_COLORS = {
+  open: "#df9310",     // amber
+  replied: "#0c8ef8",  // blue
+  resolved: "#258c5c", // green
+  closed: "#6e57d1",   // violet
+};
+
+// Bar chart ek hi series hai, isliye ek hi rang. Har bar ka alag rang
+// dena galat hota — bar ki lambai wo kaam pehle se kar rahi hai.
+const BAR_COLOR = "#077ddf";
 
 const tiles = computed(() => {
   const t = totals.value;
   if (!t) return [];
   return [
-    { label: "Total tickets", value: t.total, dot: "" },
-    { label: "Open", value: t.open + t.replied, dot: "bg-surface-amber-5" },
-    { label: "Resolved", value: t.resolved + t.closed, dot: "bg-surface-green-5" },
-    { label: "Unassigned", value: t.unassigned, dot: "bg-surface-red-5" },
-    { label: "Last 7 days", value: t.last_7_days, dot: "" },
+    { title: "Total tickets", value: t.total },
+    { title: "Open", value: t.open + t.replied },
+    { title: "Resolved", value: t.resolved + t.closed },
+    { title: "Unassigned", value: t.unassigned },
   ];
 });
 
-// Sabse lambi bar 100% — chhote numbers bhi tab dikhte hain.
-// max 0 hone par 0/0 = NaN aa jaata, isliye guard.
-const maxResolved = computed(() =>
-  Math.max(1, ...stats.value.map((a) => a.resolved))
-);
-function barWidth(n: number) {
-  if (!n) return "0%";
-  // 3% minimum, warna 1 ticket wali bar dikhti hi nahi.
-  return `${Math.max(3, (n / maxResolved.value) * 100)}%`;
-}
+const resolvedChart = computed(() => ({
+  title: "Tickets resolved",
+  subtitle: "Counted when a ticket is first marked resolved or closed",
+  // series.name hi data ka key hai — AxisChart usi se value uthata hai.
+  data: stats.value.map((a) => ({
+    agent: a.specialization ? `${a.label} · ${a.specialization}` : a.label,
+    Resolved: a.resolved,
+  })),
+  xAxis: { key: "agent", type: "category" as const },
+  yAxis: { title: "Tickets" },
+  // Labels agent ke naam hain — vertical bars ke neeche wo tirche karne
+  // padte. Horizontal me seedhe padhe jaate hain.
+  swapXY: true,
+  series: [{ name: "Resolved", type: "bar" as const, color: BAR_COLOR }],
+}));
 
-onMounted(async () => {
+const statusChart = computed(() => {
+  const t = totals.value!;
+  return {
+    title: "By status",
+    data: [
+      { status: "Open", count: t.open },
+      { status: "Replied", count: t.replied },
+      { status: "Resolved", count: t.resolved },
+      { status: "Closed", count: t.closed },
+    ].filter((r) => r.count > 0),
+    categoryColumn: "status",
+    valueColumn: "count",
+    colors: [
+      STATUS_COLORS.open, STATUS_COLORS.replied,
+      STATUS_COLORS.resolved, STATUS_COLORS.closed,
+    ],
+  };
+});
+
+async function load() {
+  error.value = "";
   try {
+    const args = { p_days: range.value };
     const [{ data: s, error: e1 }, { data: t, error: e2 }] = await Promise.all([
-      supabase.rpc("agent_stats"),
-      supabase.rpc("ticket_totals"),
+      supabase.rpc("agent_stats", args),
+      supabase.rpc("ticket_totals", args),
     ]);
     if (e1) throw e1;
     if (e2) throw e2;
@@ -186,6 +244,16 @@ onMounted(async () => {
     error.value = e?.message || "Could not load analytics";
   } finally {
     loading.value = false;
+    refreshing.value = false;
   }
-});
+}
+
+async function setRange(days: number | null) {
+  if (range.value === days) return;
+  range.value = days;
+  refreshing.value = true;
+  await load();
+}
+
+onMounted(load);
 </script>

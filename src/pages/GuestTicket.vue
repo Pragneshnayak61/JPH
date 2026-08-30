@@ -74,6 +74,7 @@
               :content="form.description"
               :editable="!submitting"
               :fixed-menu="true"
+              :upload-function="uploadImage"
               @change="(v: string) => (form.description = v)"
             />
           </div>
@@ -136,6 +137,7 @@
 <script setup lang="ts">
 import { getMyTickets, forgetTickets, rememberTicket } from "@/lib/myTickets";
 import { notify } from "@/lib/notify";
+import { uploadImage } from "@/lib/uploadImage";
 import { useSettingsStore } from "@/stores/settings";
 import { supabase } from "@/lib/supabase";
 import {
