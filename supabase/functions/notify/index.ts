@@ -46,21 +46,115 @@ function json(body: unknown, status: number, origin: string | null) {
   });
 }
 
-function escapeHtml(s: string) {
+function esc(s: string) {
   return s
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-function layout(title: string, bodyHtml: string) {
-  return `<!doctype html><html><body style="margin:0;background:#f6f8f7;padding:24px;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1b2422">
-<div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:24px">
-  <h1 style="margin:0 0 12px;font-size:18px">${escapeHtml(title)}</h1>
-  ${bodyHtml}
-  <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #eee;font-size:12px;color:#8a9391">
-    JPH Helpdesk
-  </p>
-</div></body></html>`;
+/** HTML se plain text — mail ka text version banane ke liye. */
+function toText(html: string) {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h[1-6]|tr|li)>/gi, "\n")
+    .replace(/<li>/gi, "  - ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+type Brand = { name: string; color: string; logo: string | null; contact: string | null };
+
+/**
+ * Poora email template.
+ *
+ * Sab kuch TABLE se bana hai, div/flex se nahi. Outlook aur kai purane
+ * clients modern CSS samajhte hi nahi — wahan flex layout bikhar jaata
+ * hai. Style bhi har tag par inline hai, kyunki <style> block Gmail
+ * aksar hata deta hai.
+ */
+function layout(brand: Brand, opts: {
+  preheader: string;
+  heading: string;
+  bodyHtml: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  footnote?: string;
+}) {
+  const { name, color } = brand;
+  const initial = esc(name.charAt(0).toUpperCase());
+
+  return `<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(opts.heading)}</title></head>
+<body style="margin:0;padding:0;background:#f4f6f5;">
+
+<!-- Preheader: inbox me subject ke baad dikhne wali line. Chhupa hua
+     rakhte hain, warna mail ke andar dobara chhap jaata hai. -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+  ${esc(opts.preheader)}
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f6f5;padding:32px 12px;">
+<tr><td align="center">
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:#ffffff;border:1px solid #e6e9e8;border-radius:12px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+    <!-- header -->
+    <tr><td style="padding:20px 28px;border-bottom:1px solid #eef1f0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td width="32" style="vertical-align:middle;">
+          ${brand.logo
+            ? `<img src="${esc(brand.logo)}" width="32" height="32" alt="" style="display:block;border-radius:6px;">`
+            : `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+                 <td width="32" height="32" align="center" style="background:${esc(color)};border-radius:6px;color:#ffffff;font-size:15px;font-weight:700;line-height:32px;">${initial}</td>
+               </tr></table>`}
+        </td>
+        <td style="padding-left:10px;vertical-align:middle;font-size:15px;font-weight:600;color:#1b2422;">
+          ${esc(name)}
+        </td>
+      </tr>
+      </table>
+    </td></tr>
+
+    <!-- body -->
+    <tr><td style="padding:28px;">
+      <h1 style="margin:0 0 16px;font-size:19px;line-height:1.35;font-weight:600;color:#1b2422;">
+        ${esc(opts.heading)}
+      </h1>
+      ${opts.bodyHtml}
+
+      ${opts.ctaUrl ? `
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 4px;">
+      <tr><td align="center" style="background:${esc(color)};border-radius:8px;">
+        <a href="${esc(opts.ctaUrl)}" style="display:inline-block;padding:11px 22px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">
+          ${esc(opts.ctaText ?? "Open")}
+        </a>
+      </td></tr>
+      </table>` : ""}
+
+      ${opts.footnote ? `
+      <p style="margin:20px 0 0;font-size:13px;line-height:1.5;color:#8a9391;">
+        ${opts.footnote}
+      </p>` : ""}
+    </td></tr>
+
+    <!-- footer -->
+    <tr><td style="padding:16px 28px;background:#fafbfb;border-top:1px solid #eef1f0;">
+      <p style="margin:0;font-size:12px;line-height:1.5;color:#8a9391;">
+        ${esc(name)}${brand.contact ? ` &middot; <a href="mailto:${esc(brand.contact)}" style="color:#8a9391;">${esc(brand.contact)}</a>` : ""}
+      </p>
+    </td></tr>
+
+  </table>
+</td></tr>
+</table>
+</body></html>`;
 }
 
 async function sendMail(to: string, subject: string, html: string) {
@@ -80,6 +174,12 @@ async function sendMail(to: string, subject: string, html: string) {
       from: Deno.env.get("SMTP_FROM") ?? Deno.env.get("SMTP_USER")!,
       to,
       subject,
+      // Plain text BHI bhejte hain, sirf html nahi.
+      //
+      // Iske bina do problem hoti thi: mail ke beech me "=20" jaise
+      // quoted-printable ke tukde dikhte the, aur jin clients me HTML
+      // band ho unhe kuch padhne ko hi nahi milta tha.
+      content: toText(html),
       html,
     });
   } finally {
@@ -115,13 +215,27 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
+  // Branding settings se — mail me wahi naam aur rang jo site par hai.
+  // Hardcode karte to settings badalne par mail purane naam se jaati.
+  const { data: st } = await db
+    .from("site_settings")
+    .select("company_name, legal_name, accent_color, logo_url, contact_email")
+    .eq("id", 1)
+    .single();
+
+  const brand: Brand = {
+    name: st?.company_name || "Support",
+    color: st?.accent_color || "#1b2422",
+    logo: st?.logo_url || null,
+    contact: st?.contact_email || null,
+  };
+
   // ---------------------------------------------------------------- 1
   // Ticket bana — customer ko confirmation.
   //
   // Ye anon bhi bula sakta hai (guest form se). Isliye public_token
   // maangte hain: wo random uuid hai jo sirf ticket banane wale ko mila
-  // hai. Mail hamesha USI ticket ke apne email par jaata hai, client ke
-  // bheje kisi address par nahi.
+  // hai. Mail hamesha USI ticket ke apne email par jaata hai.
   if (type === "ticket_created") {
     const token = String(body.public_token ?? "");
     if (!token) return json({ error: "Missing token" }, 400, origin);
@@ -133,22 +247,33 @@ Deno.serve(async (req) => {
       .single();
     if (!t) return json({ error: "Ticket not found" }, 404, origin);
 
-    await sendMail(
-      t.raised_by_email,
-      `[#${t.id}] We received your request`,
-      layout("Thanks, we have your request", `
-        <p style="margin:0 0 12px">Hi ${escapeHtml(t.contact_name || "there")},</p>
-        <p style="margin:0 0 12px">We received your request and our team will get back to you by email.</p>
-        <p style="margin:0 0 6px"><strong>Ticket #${t.id}</strong></p>
-        <p style="margin:0 0 12px;color:#5a6563">${escapeHtml(t.subject)}</p>
-        <p style="margin:0;font-size:13px;color:#8a9391">Just reply to this email if you want to add anything.</p>`)
-    );
+    const html = layout(brand, {
+      preheader: `Ticket #${t.id} — we have your request and will reply by email.`,
+      heading: "We have your request",
+      bodyHtml: `
+        <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#3a4644;">
+          Hi ${esc(t.contact_name || "there")},
+        </p>
+        <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#3a4644;">
+          Our team has received your request and will get back to you by email.
+        </p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f9f8;border-radius:8px;">
+        <tr><td style="padding:14px 16px;">
+          <p style="margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#8a9391;">Ticket #${t.id}</p>
+          <p style="margin:0;font-size:15px;font-weight:600;color:#1b2422;">${esc(t.subject)}</p>
+        </td></tr>
+        </table>`,
+      ctaText: "View your ticket",
+      ctaUrl: `${appUrl}/ticket/${t.public_token}`,
+      footnote: "You can also just reply to this email to add anything.",
+    });
+
+    await sendMail(t.raised_by_email, `[#${t.id}] ${t.subject}`, html);
     return json({ ok: true }, 200, origin);
   }
 
   // ---------------------------------------------------------------- 2
   // Agent ne reply likha — customer ko bhejo.
-  // Yahan caller ka staff hona zaroori hai.
   if (type === "agent_reply") {
     const authHeader = req.headers.get("Authorization") ?? "";
     const caller = createClient(url, anonKey, {
@@ -172,28 +297,36 @@ Deno.serve(async (req) => {
     if (!m) return json({ error: "Message not found" }, 404, origin);
 
     // Internal note customer ko kabhi nahi jaana chahiye. Ye check yahan
-    // bhi hai (client par bhi hai) — kyunki galti se bhej diya to wapas
+    // BHI hai (client par bhi hai) — kyunki galti se bhej diya to wapas
     // nahi le sakte.
     if (m.is_internal) return json({ error: "Internal notes are not emailed" }, 400, origin);
 
     const { data: t } = await db
       .from("tickets")
-      .select("id, subject, raised_by_email, contact_name")
+      .select("id, subject, raised_by_email, contact_name, public_token")
       .eq("id", m.ticket_id)
       .single();
     if (!t) return json({ error: "Ticket not found" }, 404, origin);
 
-    await sendMail(
-      t.raised_by_email,
-      `Re: [#${t.id}] ${t.subject}`,
-      layout(t.subject, `
-        <p style="margin:0 0 12px">Hi ${escapeHtml(t.contact_name || "there")},</p>
-        <div style="margin:0 0 16px;padding:12px;background:#f6f8f7;border-radius:8px;white-space:pre-wrap">${escapeHtml(m.body)}</div>
-        <p style="margin:0;font-size:13px;color:#8a9391">
-          &mdash; ${escapeHtml(m.author_name || "Support")}<br>
-          Reply to this email to continue the conversation.
-        </p>`)
-    );
+    const html = layout(brand, {
+      preheader: String(m.body).slice(0, 120),
+      heading: t.subject,
+      bodyHtml: `
+        <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#3a4644;">
+          Hi ${esc(t.contact_name || "there")},
+        </p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f9f8;border-left:3px solid ${esc(brand.color)};border-radius:6px;">
+        <tr><td style="padding:14px 16px;font-size:15px;line-height:1.6;color:#1b2422;white-space:pre-wrap;">${esc(m.body)}</td></tr>
+        </table>
+        <p style="margin:14px 0 0;font-size:13px;color:#8a9391;">
+          &mdash; ${esc(m.author_name || "Support")}
+        </p>`,
+      ctaText: "View the full ticket",
+      ctaUrl: `${appUrl}/ticket/${t.public_token}`,
+      footnote: "Reply to this email to continue the conversation.",
+    });
+
+    await sendMail(t.raised_by_email, `Re: [#${t.id}] ${t.subject}`, html);
     return json({ ok: true }, 200, origin);
   }
 
@@ -218,19 +351,31 @@ Deno.serve(async (req) => {
     const name = String(body.full_name ?? "").trim();
     if (!to || !password) return json({ error: "Missing details" }, 400, origin);
 
-    await sendMail(
-      to,
-      "Your JPH Helpdesk account",
-      layout("Your account is ready", `
-        <p style="margin:0 0 12px">Hi ${escapeHtml(name || "there")},</p>
-        <p style="margin:0 0 12px">An account has been created for you on JPH Helpdesk.</p>
-        <table style="margin:0 0 16px;font-size:14px">
-          <tr><td style="padding:2px 12px 2px 0;color:#5a6563">Email</td><td>${escapeHtml(to)}</td></tr>
-          <tr><td style="padding:2px 12px 2px 0;color:#5a6563">Password</td><td><code>${escapeHtml(password)}</code></td></tr>
-        </table>
-        <a href="${appUrl}/login" style="display:inline-block;background:#1b2422;color:#fff;padding:9px 16px;border-radius:8px;text-decoration:none;font-size:14px">Sign in</a>
-        <p style="margin:16px 0 0;font-size:13px;color:#8a9391">Please change this password after you sign in.</p>`)
-    );
+    const html = layout(brand, {
+      preheader: `Your ${brand.name} account is ready.`,
+      heading: "Your account is ready",
+      bodyHtml: `
+        <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#3a4644;">
+          Hi ${esc(name || "there")}, an account has been created for you.
+        </p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f9f8;border-radius:8px;">
+        <tr><td style="padding:14px 16px;">
+          <p style="margin:0 0 8px;font-size:13px;color:#8a9391;">
+            Email<br>
+            <span style="font-size:15px;color:#1b2422;">${esc(to)}</span>
+          </p>
+          <p style="margin:0;font-size:13px;color:#8a9391;">
+            Temporary password<br>
+            <span style="font-size:15px;font-family:ui-monospace,Menlo,Consolas,monospace;color:#1b2422;">${esc(password)}</span>
+          </p>
+        </td></tr>
+        </table>`,
+      ctaText: "Sign in",
+      ctaUrl: `${appUrl}/login`,
+      footnote: "Please change this password after you sign in.",
+    });
+
+    await sendMail(to, `Your ${brand.name} account`, html);
     return json({ ok: true }, 200, origin);
   }
 

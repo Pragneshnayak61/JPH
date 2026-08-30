@@ -131,6 +131,14 @@
                 >
                   {{ p.is_active ? "Disable" : "Enable" }}
                 </button>
+                <button
+                  v-if="auth.isAdmin && p.id !== auth.profile?.id"
+                  class="text-p-sm text-ink-red-3 underline hover:text-ink-red-4"
+                  :disabled="saving === p.id"
+                  @click="askDelete(p)"
+                >
+                  Delete
+                </button>
               </div>
             </td>
           </tr>
@@ -206,6 +214,40 @@
     </p>
 
     <ErrorMessage :message="roleError" class="mt-3" />
+
+    <!-- Delete confirm -->
+    <Dialog
+      v-model="showDelete"
+      :options="{ title: 'Delete this person?', size: 'sm' }"
+    >
+      <template #body-content>
+        <p class="text-p-base text-ink-gray-7">
+          <strong>{{ toDelete?.full_name || toDelete?.email }}</strong> will be
+          removed completely. They will not be able to sign in again.
+        </p>
+        <p class="mt-2 text-p-sm text-ink-gray-5">
+          Their tickets stay, but their name disappears from them &mdash; you
+          will no longer be able to tell who handled what. If you only want to
+          stop their access, use <strong>Disable</strong> instead; that keeps
+          the history.
+        </p>
+        <ErrorMessage :message="deleteError" class="mt-3" />
+      </template>
+      <template #actions>
+        <div class="flex gap-2">
+          <Button class="flex-1" @click="showDelete = false">Cancel</Button>
+          <Button
+            class="flex-1"
+            theme="red"
+            variant="solid"
+            :loading="deleting"
+            @click="doDelete"
+          >
+            Delete
+          </Button>
+        </div>
+      </template>
+    </Dialog>
 
     <!-- Add person -->
     <Dialog
@@ -324,6 +366,43 @@ const saving = ref<string | null>(null);
 const savingRole = ref<string | null>(null);
 const showHelp = ref(false);
 const lastCreated = ref("");
+const showDelete = ref(false);
+const toDelete = ref<Person | null>(null);
+const deleting = ref(false);
+const deleteError = ref("");
+
+function askDelete(p: Person) {
+  toDelete.value = p;
+  deleteError.value = "";
+  showDelete.value = true;
+}
+
+async function doDelete() {
+  if (!toDelete.value) return;
+  deleting.value = true;
+  deleteError.value = "";
+  try {
+    // User mitane ke liye service_role chahiye, jo browser me nahi ho
+    // sakti — isliye wahi Edge Function jo user banati hai.
+    const { data, error } = await supabase.functions.invoke("create-user", {
+      body: { action: "delete", id: toDelete.value.id },
+    });
+    if (error) {
+      const ctx = (error as any).context;
+      const msg = ctx && typeof ctx.json === "function"
+        ? (await ctx.json().catch(() => null))?.error
+        : null;
+      throw new Error(msg || error.message);
+    }
+    if ((data as any)?.error) throw new Error((data as any).error);
+    showDelete.value = false;
+    await load();
+  } catch (e: any) {
+    deleteError.value = e?.message || "Could not delete this person";
+  } finally {
+    deleting.value = false;
+  }
+}
 
 const kindOptions = [
   { label: "Admin", value: "admin" },

@@ -87,6 +87,11 @@ Deno.serve(async (req) => {
     return json({ error: "Only an active administrator can add people" }, 403, origin);
   }
 
+  // service_role wala client — user banane aur mitane, dono ke liye.
+  const admin = createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
   // ---------------------------------------------------------------
   // 2. Input check
   // ---------------------------------------------------------------
@@ -95,6 +100,45 @@ Deno.serve(async (req) => {
     body = await req.json();
   } catch {
     return json({ error: "Invalid request body" }, 400, origin);
+  }
+
+  // ---------------------------------------------------------------
+  // DELETE
+  //
+  // User mitane ke liye bhi service_role chahiye, isliye yahi function.
+  //
+  // Zyadatar soorat me DELETE se behtar "Disable" hota hai: account band
+  // ho jaata hai par uska naam purane tickets par bana rehta hai. Delete
+  // ke baad "kisne kiya tha" ka jawab hamesha ke liye chala jaata hai.
+  if (String(body.action ?? "") === "delete") {
+    const targetId = String(body.id ?? "");
+    if (!targetId) return json({ error: "Missing user id" }, 400, origin);
+
+    // Khud ko mitana = apne aap ko bahar kar lena, bina wapas aane ke
+    // raaste ke.
+    if (targetId === userData.user.id) {
+      return json({ error: "You cannot delete your own account" }, 400, origin);
+    }
+
+    // Aakhri admin bacha rehna chahiye, warna koi bhi kuch nahi badal
+    // payega — na naya admin bana payega.
+    const { data: target } = await admin
+      .from("profiles").select("kind").eq("id", targetId).single();
+
+    if (target?.kind === "admin") {
+      const { count } = await admin
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("kind", "admin")
+        .eq("is_active", true);
+      if ((count ?? 0) <= 1) {
+        return json({ error: "This is the only administrator. Make someone else an admin first." }, 400, origin);
+      }
+    }
+
+    const { error: delErr } = await admin.auth.admin.deleteUser(targetId);
+    if (delErr) return json({ error: delErr.message }, 400, origin);
+    return json({ ok: true }, 200, origin);
   }
 
   const email = String(body.email ?? "").trim().toLowerCase();
@@ -116,10 +160,6 @@ Deno.serve(async (req) => {
   // ---------------------------------------------------------------
   // 3. User banao
   // ---------------------------------------------------------------
-  const admin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email,
     password,
