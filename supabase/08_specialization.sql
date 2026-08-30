@@ -13,6 +13,12 @@ alter table public.profiles
 
 
 -- staff_directory ab specialization bhi jodta hai.
+--
+-- DROP zaroori hai: Postgres `create or replace` se function ka RETURN
+-- TYPE nahi badal sakta, aur hum ek naya column jod rahe hain. Bina drop
+-- ke ye error aati hai:
+--   42P13: cannot change return type of existing function
+drop function if exists public.staff_directory();
 create or replace function public.staff_directory()
 returns table (id uuid, label text, specialization text, is_active boolean)
 language plpgsql
@@ -48,6 +54,8 @@ grant execute on function public.staff_directory() to authenticated;
 
 
 -- agent_stats me bhi, taaki Analytics me pata rahe kaun kya karta hai.
+-- Yahan bhi drop, wahi wajah — naya column jud raha hai.
+drop function if exists public.agent_stats();
 create or replace function public.agent_stats()
 returns table (
   agent_id       uuid,
