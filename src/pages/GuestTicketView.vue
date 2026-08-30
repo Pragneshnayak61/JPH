@@ -39,7 +39,12 @@
             <p class="mb-2 text-p-sm font-medium text-ink-gray-7">
               {{ ticket.contact_name || "You" }}
             </p>
-            <p class="whitespace-pre-wrap text-p-base text-ink-gray-8">
+            <div
+              v-if="looksLikeHtml(ticket.description)"
+              class="prose prose-sm max-w-none text-ink-gray-8"
+              v-html="safeHtml(ticket.description)"
+            ></div>
+            <p v-else class="whitespace-pre-wrap text-p-base text-ink-gray-8">
               {{ ticket.description }}
             </p>
           </div>
@@ -96,6 +101,7 @@
 </template>
 
 <script setup lang="ts">
+import { looksLikeHtml, safeHtml } from "@/lib/richText";
 import { supabase } from "@/lib/supabase";
 import {
   Badge, Button, ErrorMessage, FormControl, LoadingIndicator,

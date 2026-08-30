@@ -61,14 +61,22 @@
             :disabled="submitting"
           />
 
-          <FormControl
-            v-model="form.description"
-            type="textarea"
-            :rows="6"
-            label="Describe the problem"
-            placeholder="What happened, when it started, what you were doing..."
-            :disabled="submitting"
-          />
+          <div>
+            <FormLabel label="Describe the problem" />
+            <!-- Frappe jaisa rich editor. textarea ki jagah isliye ki
+                 customer list, bold, link waghera laga sake — problem
+                 samjhane me kaafi farq padta hai. -->
+            <TextEditor
+              ref="editorRef"
+              class="mt-1 overflow-hidden rounded border border-outline-gray-2 bg-surface-gray-2 focus-within:border-outline-gray-4 focus-within:bg-surface-base"
+              editor-class="prose-sm min-h-[140px] max-h-[320px] overflow-y-auto px-2 py-1.5 focus:outline-none"
+              placeholder="What happened, when it started, what you were doing..."
+              :content="form.description"
+              :editable="!submitting"
+              :fixed-menu="true"
+              @change="(v: string) => (form.description = v)"
+            />
+          </div>
 
           <ErrorMessage :message="error" />
 
@@ -130,7 +138,9 @@ import { getMyTickets, forgetTickets, rememberTicket } from "@/lib/myTickets";
 import { notify } from "@/lib/notify";
 import { useSettingsStore } from "@/stores/settings";
 import { supabase } from "@/lib/supabase";
-import { Button, ErrorMessage, FeatherIcon, FormControl } from "frappe-ui";
+import {
+  Button, ErrorMessage, FeatherIcon, FormControl, FormLabel, TextEditor,
+} from "frappe-ui";
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 
@@ -175,7 +185,10 @@ function validate(): string {
   // bhejne par hi hota hai. Yahan sirf saaf galtiyan pakadni hain.
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return "That email does not look right";
   if (!form.subject.trim()) return "Please enter a subject";
-  if (!form.description.trim()) return "Please describe the problem";
+  // Editor khali hone par bhi "<p></p>" deta hai, isliye trim kaafi nahi.
+  // Tags hata kar dekhte hain ki andar sach me kuch likha hai ya nahi.
+  if (!form.description.replace(/<[^>]*>/g, "").trim())
+    return "Please describe the problem";
   return "";
 }
 
@@ -196,7 +209,7 @@ async function submit() {
       p_contact_name: form.contact_name.trim(),
       p_company_name: form.company_name.trim(),
       p_subject: form.subject.trim(),
-      p_description: form.description.trim(),
+      p_description: form.description,
       p_priority: form.priority,
     });
 

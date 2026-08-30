@@ -8,6 +8,9 @@
        [lightningcss minify] Unknown at rule: @tailwind
    Browser unhe ignore kar deta hai, par wo bekaar ka kachra tha. */
 @import "frappe-ui/style.css";
+/* Rich text editor ka apna CSS. Iske bina toolbar aur editor ke andar
+   ka formatting (bold, list, quote) bina style ke dikhta hai. */
+@import "frappe-ui/editor-style.css";
 
 html,
 body,

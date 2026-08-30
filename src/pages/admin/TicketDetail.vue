@@ -43,7 +43,13 @@
               {{ formatDate(ticket.created_at) }}
             </span>
           </div>
-          <p class="whitespace-pre-wrap text-p-base text-ink-gray-8">
+          <!-- Guest ka HTML hai — bina sanitize kiye render karna XSS hai -->
+          <div
+            v-if="looksLikeHtml(ticket.description)"
+            class="prose prose-sm max-w-none text-ink-gray-8"
+            v-html="safeHtml(ticket.description)"
+          ></div>
+          <p v-else class="whitespace-pre-wrap text-p-base text-ink-gray-8">
             {{ ticket.description }}
           </p>
         </div>
@@ -172,17 +178,64 @@
       </div>
 
       <ErrorMessage :message="saveError" />
+
+      <!-- Delete sabse neeche aur alag rakha hai. Ye wapas nahi aata,
+           isliye status/assign ke paas nahi hona chahiye jahan galti se
+           click ho jaye. -->
+      <div
+        v-if="auth.can('can_delete_tickets')"
+        class="border-t border-outline-gray-2 pt-4"
+      >
+        <button
+          class="text-p-sm text-ink-red-3 underline hover:text-ink-red-4"
+          @click="showDelete = true"
+        >
+          Delete this ticket
+        </button>
+      </div>
     </aside>
+
+    <Dialog
+      v-model="showDelete"
+      :options="{ title: 'Delete this ticket?', size: 'sm' }"
+    >
+      <template #body-content>
+        <p class="text-p-base text-ink-gray-7">
+          Ticket #{{ ticket.id }} and every reply on it will be removed. This
+          cannot be undone.
+        </p>
+        <p class="mt-2 text-p-sm text-ink-gray-5">
+          If you only want it out of the queue, set the status to
+          <strong>Closed</strong> instead &mdash; that keeps the history.
+        </p>
+        <ErrorMessage :message="deleteError" class="mt-3" />
+      </template>
+      <template #actions>
+        <div class="flex gap-2">
+          <Button class="flex-1" @click="showDelete = false">Cancel</Button>
+          <Button
+            class="flex-1"
+            theme="red"
+            variant="solid"
+            :loading="deleting"
+            @click="destroy"
+          >
+            Delete
+          </Button>
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { notify } from "@/lib/notify";
+import { looksLikeHtml, safeHtml } from "@/lib/richText";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth";
 import {
-  Avatar, Badge, Button, ErrorMessage, FeatherIcon, FormControl, FormLabel,
-  LoadingIndicator,
+  Avatar, Badge, Button, Dialog, ErrorMessage, FeatherIcon, FormControl,
+  FormLabel, LoadingIndicator,
 } from "frappe-ui";
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
@@ -235,6 +288,33 @@ const sending = ref(false);
 const replyError = ref("");
 // null = abhi koi reply nahi bheji; true/false = pichhli mail gayi ya nahi
 const emailSent = ref<boolean | null>(null);
+const showDelete = ref(false);
+const deleting = ref(false);
+const deleteError = ref("");
+
+async function destroy() {
+  deleting.value = true;
+  deleteError.value = "";
+  try {
+    const { error, count } = await supabase
+      .from("tickets")
+      .delete({ count: "exact" })
+      .eq("id", Number(props.id));
+    if (error) throw error;
+
+    // RLS rok de to delete "safal" dikhta hai par 0 rows jaati hain.
+    // Bina is check ke user ko lagta ki ticket mit gaya, aur wo list me
+    // wapas dikhta rehta.
+    if (!count) {
+      throw new Error("You do not have permission to delete this ticket.");
+    }
+    router.push("/admin");
+  } catch (e: any) {
+    deleteError.value = e?.message || "Could not delete the ticket";
+  } finally {
+    deleting.value = false;
+  }
+}
 
 const statusOptions = [
   { label: "Open", value: "open" },
