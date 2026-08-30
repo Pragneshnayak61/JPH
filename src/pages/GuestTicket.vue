@@ -93,6 +93,7 @@
 </template>
 
 <script setup lang="ts">
+import { notify } from "@/lib/notify";
 import { supabase } from "@/lib/supabase";
 import { Button, ErrorMessage, FormControl } from "frappe-ui";
 import { reactive, ref } from "vue";
@@ -152,6 +153,12 @@ async function submit() {
     });
 
     if (err) throw err;
+
+    // Confirmation mail. Await NAHI kar rahe — mail bhejne me 2-3 second
+    // lagte hain aur user ko itni der "Submitting..." dekhna padta.
+    // Mail na jaye to bhi ticket ban chuka hai, wahi zyada zaroori hai.
+    notify("ticket_created", { public_token: data });
+
     router.push({ name: "TicketSubmitted", params: { token: data } });
   } catch (e: any) {
     error.value = e?.message || "Could not submit the ticket. Please try again.";

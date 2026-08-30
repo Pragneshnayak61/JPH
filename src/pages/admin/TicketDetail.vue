@@ -103,6 +103,13 @@
           </Button>
         </div>
         <ErrorMessage :message="replyError" class="mt-2" />
+        <p
+          v-if="emailSent === false"
+          class="mt-2 text-p-sm text-ink-amber-3"
+        >
+          Reply saved, but the email could not be sent. Check the email
+          settings.
+        </p>
       </div>
     </div>
 
@@ -170,6 +177,7 @@
 </template>
 
 <script setup lang="ts">
+import { notify } from "@/lib/notify";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth";
 import {
@@ -207,6 +215,8 @@ const reply = ref("");
 const isInternal = ref(false);
 const sending = ref(false);
 const replyError = ref("");
+// null = abhi koi reply nahi bheji; true/false = pichhli mail gayi ya nahi
+const emailSent = ref<boolean | null>(null);
 
 const statusOptions = [
   { label: "Open", value: "open" },
@@ -281,15 +291,27 @@ async function sendReply() {
   sending.value = true;
   replyError.value = "";
   try {
-    const { error: e } = await supabase.from("ticket_messages").insert({
-      ticket_id: Number(props.id),
-      author_id: auth.profile?.id ?? null,
-      author_email: auth.profile?.email ?? null,
-      author_name: auth.profile?.full_name ?? auth.profile?.email ?? null,
-      body: reply.value.trim(),
-      is_internal: isInternal.value,
-    });
+    // .select() isliye ki message ka id chahiye — notify function usi id
+    // se message dhoondh kar mail bhejta hai (body client se nahi leta).
+    const { data: msg, error: e } = await supabase
+      .from("ticket_messages")
+      .insert({
+        ticket_id: Number(props.id),
+        author_id: auth.profile?.id ?? null,
+        author_email: auth.profile?.email ?? null,
+        author_name: auth.profile?.full_name ?? auth.profile?.email ?? null,
+        body: reply.value.trim(),
+        is_internal: isInternal.value,
+      })
+      .select("id")
+      .single();
     if (e) throw e;
+
+    // Internal note kabhi mail nahi hona chahiye. Ye check server par bhi
+    // hai — galti se chala gaya to wapas nahi le sakte.
+    if (!isInternal.value && msg) {
+      emailSent.value = await notify("agent_reply", { message_id: msg.id });
+    }
 
     // Public reply ka matlab hai gend ab customer ke paale me hai.
     // Internal note par status nahi badalna chahiye — wo sirf team ke liye hai.

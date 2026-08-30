@@ -111,6 +111,13 @@
       </div>
     </div>
 
+    <div
+      v-if="lastCreated"
+      class="mt-3 rounded-lg border border-outline-green-2 bg-surface-green-1 p-3 text-p-base text-ink-gray-8"
+    >
+      {{ lastCreated }}
+    </div>
+
     <ErrorMessage :message="saveError" class="mt-3" />
 
     <p class="mt-2 text-p-sm text-ink-gray-5">
@@ -251,6 +258,7 @@
 </template>
 
 <script setup lang="ts">
+import { notify } from "@/lib/notify";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth";
 import {
@@ -288,6 +296,7 @@ const roleError = ref("");
 const saving = ref<string | null>(null);
 const savingRole = ref<string | null>(null);
 const showHelp = ref(false);
+const lastCreated = ref("");
 
 const kindOptions = [
   { label: "Admin", value: "admin" },
@@ -429,7 +438,18 @@ async function createPerson() {
     }
     if ((data as any)?.error) throw new Error((data as any).error);
 
+    // Welcome mail. Na jaye to bhi account ban chuka hai — admin password
+    // haath se de sakta hai, isliye ise fail hone dena theek hai.
+    const mailed = await notify("user_invited", {
+      email: form.email.trim(),
+      password: form.password,
+      full_name: form.full_name.trim(),
+    });
+
     showAdd.value = false;
+    lastCreated.value = mailed
+      ? `Account created and the details were emailed to ${form.email.trim()}.`
+      : `Account created, but the email could not be sent. Share this password yourself: ${form.password}`;
     await load();
   } catch (e: any) {
     createError.value = e?.message || "Could not create the account";
