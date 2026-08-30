@@ -60,4 +60,15 @@ revoke all on function public.staff_directory() from public;
 grant execute on function public.staff_directory() to authenticated;
 
 
-select * from public.staff_directory();
+-- NOTE: yahan `select * from public.staff_directory()` MAT likhiye.
+-- Wo function is_staff() maangta hai, aur SQL Editor postgres role se
+-- chalta hai — wahan koi logged-in user hota hi nahi (auth.uid() null),
+-- to wo "Not allowed" de deta hai aur poori script fail ho jaati hai.
+--
+-- Function theek bana hai ya nahi, ye dekhne ke liye uski shakl
+-- poochhte hain — chalane ki zaroorat nahi:
+select p.proname as function_ka_naam,
+       pg_get_function_result(p.oid) as kya_wapas_karta_hai
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public' and p.proname = 'staff_directory';
