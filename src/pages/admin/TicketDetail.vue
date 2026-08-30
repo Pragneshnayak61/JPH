@@ -134,6 +134,21 @@
       </div>
 
       <div>
+        <FormLabel label="Due date" />
+        <FormControl
+          v-model="dueDate"
+          type="date"
+          @change="updateField('due_date', dueDate || null)"
+        />
+        <p
+          v-if="isOverdue"
+          class="mt-1 text-p-sm font-medium text-ink-red-3"
+        >
+          Overdue
+        </p>
+      </div>
+
+      <div>
         <FormLabel label="Category" />
         <FormControl
           v-model="categoryId"
@@ -247,7 +262,7 @@ import {
   Avatar, Badge, Button, Dialog, ErrorMessage, FeatherIcon, FormControl,
   FormLabel, LoadingIndicator,
 } from "frappe-ui";
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 
 const props = defineProps<{ id: string }>();
@@ -260,6 +275,7 @@ type Ticket = {
   raised_by_email: string; contact_name: string | null;
   company_name: string | null; assigned_to: string | null;
   category_id: string | null;
+  due_date: string | null;
   created_at: string;
 };
 type Message = {
@@ -274,6 +290,15 @@ const assignedTo = ref<string>("");
 const agentOptions = ref<{ label: string; value: string }[]>([]);
 const staffLabels = ref<Record<string, string>>({});
 const categoryId = ref<string>("");
+const dueDate = ref<string>("");
+
+// Band ho chuke ticket par "Overdue" dikhana bekaar hai — kaam ho gaya,
+// deri ab maayne nahi rakhti.
+const isOverdue = computed(() => {
+  if (!dueDate.value || !ticket.value) return false;
+  if (["resolved", "closed"].includes(ticket.value.status)) return false;
+  return new Date(dueDate.value) < new Date(new Date().toDateString());
+});
 const categoryOptions = ref<{ label: string; value: string }[]>([]);
 
 /**
@@ -378,6 +403,7 @@ async function load() {
       ...(cats ?? []).map((c: any) => ({ label: c.name, value: c.id })),
     ];
     categoryId.value = t.category_id ?? "";
+    dueDate.value = t.due_date ?? "";
 
     const { data: dir } = await supabase.rpc("staff_directory");
     // Dropdown me specialization bhi — "AG-02" akela dekhkar agent ko

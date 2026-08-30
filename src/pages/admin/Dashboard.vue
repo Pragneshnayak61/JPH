@@ -31,21 +31,22 @@
             <th class="px-3 py-2 text-left font-medium">Assigned to</th>
             <th class="w-28 px-3 py-2 text-left font-medium">Status</th>
             <th class="w-28 px-3 py-2 text-left font-medium">Priority</th>
+            <th class="w-28 px-3 py-2 text-left font-medium">Due</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="6" class="px-4 py-10 text-center">
+            <td colspan="7" class="px-4 py-10 text-center">
               <LoadingIndicator class="mx-auto h-5 w-5 text-ink-gray-5" />
             </td>
           </tr>
           <tr v-else-if="error">
-            <td colspan="6" class="px-4 py-10 text-center text-ink-red-3">
+            <td colspan="7" class="px-4 py-10 text-center text-ink-red-3">
               {{ error }}
             </td>
           </tr>
           <tr v-else-if="!tickets.length">
-            <td colspan="6" class="px-4 py-10 text-center text-ink-gray-5">
+            <td colspan="7" class="px-4 py-10 text-center text-ink-gray-5">
               No tickets yet.
             </td>
           </tr>
@@ -98,6 +99,16 @@
               <Badge :theme="priorityTheme[t.priority]" variant="subtle">
                 {{ t.priority }}
               </Badge>
+            </td>
+            <td class="px-3 py-2.5">
+              <span
+                v-if="t.due_date"
+                class="text-p-sm"
+                :class="isOverdue(t) ? 'font-medium text-ink-red-3' : 'text-ink-gray-6'"
+              >
+                {{ formatDue(t.due_date) }}
+              </span>
+              <span v-else class="text-p-sm text-ink-gray-4">—</span>
             </td>
           </tr>
         </tbody>
@@ -181,6 +192,7 @@ type Ticket = {
   contact_name: string | null;
   raised_by_email: string;
   assigned_to: string | null;
+  due_date: string | null;
   created_at: string;
 };
 
@@ -212,6 +224,19 @@ const stats = computed(() => {
     { label: "Resolved", value: by("resolved") },
   ];
 });
+
+function formatDue(d: string) {
+  return new Date(d).toLocaleDateString(undefined, {
+    day: "numeric", month: "short",
+  });
+}
+
+// Band ticket kabhi overdue nahi hota — kaam ho gaya, deri ab maayne
+// nahi rakhti. Warna resolved tickets bhi laal dikhte rehte.
+function isOverdue(t: Ticket) {
+  if (!t.due_date || ["resolved", "closed"].includes(t.status)) return false;
+  return new Date(t.due_date) < new Date(new Date().toDateString());
+}
 
 // ---------------------------------------------------------------- new ticket
 const auth = useAuthStore();
@@ -279,7 +304,7 @@ onMounted(async () => {
     const { data, error: err } = await supabase
       .from("tickets")
       .select(
-        "id, subject, status, priority, contact_name, raised_by_email, assigned_to, created_at"
+        "id, subject, status, priority, contact_name, raised_by_email, assigned_to, due_date, created_at"
       )
       .order("created_at", { ascending: false });
     if (err) throw err;
