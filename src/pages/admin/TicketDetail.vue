@@ -220,6 +220,33 @@
       </div>
 
       <div class="space-y-2 border-t border-outline-gray-2 pt-4 text-p-sm">
+        <!-- Kisne nipтaaya. Ye database khud bharta hai (trigger se) jab
+             koi status resolved/closed karta hai. Pehle ye kahin dikhta
+             hi nahi tha, isliye lagta tha ki field hai hi nahi — jabki
+             Analytics ki poori ginti isi par chalti hai. -->
+        <div
+          v-if="ticket.resolved_by && staffLabels[ticket.resolved_by]"
+          class="flex justify-between"
+        >
+          <span class="text-ink-gray-6">Resolved by</span>
+          <span class="text-ink-gray-8">
+            {{ staffLabels[ticket.resolved_by] }}
+          </span>
+        </div>
+        <div
+          v-else-if="['resolved', 'closed'].includes(edit.status)"
+          class="flex justify-between"
+        >
+          <span class="text-ink-gray-6">Resolved by</span>
+          <span class="text-ink-gray-5">Not recorded</span>
+        </div>
+        <div v-if="ticket.resolved_at" class="flex justify-between">
+          <span class="text-ink-gray-6">Resolved on</span>
+          <span class="text-ink-gray-8">
+            {{ formatDate(ticket.resolved_at) }}
+          </span>
+        </div>
+
         <div class="flex justify-between">
           <span class="text-ink-gray-6">Company</span>
           <span class="text-ink-gray-8">{{ ticket.company_name || "—" }}</span>
@@ -310,6 +337,8 @@ type Ticket = {
   company_name: string | null; assigned_to: string | null;
   category_id: string | null;
   due_date: string | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
   created_at: string;
 };
 type Message = {
@@ -363,7 +392,10 @@ async function saveChanges() {
     if (error) throw error;
 
     saved = { ...edit };
-    if (ticket.value) ticket.value.status = edit.status;
+    // Dobara load karte hain kyunki resolved_by / resolved_at database ke
+    // trigger se bharte hain — hamare bheje data me wo hote hi nahi, aur
+    // bina reload ke screen par purani value padi rehti.
+    await load();
     toast.success("Ticket updated");
   } catch (e: any) {
     saveError.value = e?.message || "Could not save";
