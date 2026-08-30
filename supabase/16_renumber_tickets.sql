@@ -1,19 +1,16 @@
 -- =====================================================================
--- Saare tickets: 11 purane (Fabhind, ho chuke) + 64 naye.
--- Numbering 1 se, aur Fabhind ke tickets AG-1 ko assign.
+-- Saare tickets: 13 purane (Fabhind, ho chuke) + 64 naye = 77.
+-- Numbering 1 se, aur Fabhind ke saare tickets AG-1 ko.
 --
 -- ⚠️  YE SCRIPT SAARE MAUJOODA TICKETS MITA DETI HAI.
 --
--- Ticket ka id `generated always as identity` hai — Postgres wo apne aap
--- deta hai aur beech me se badla nahi ja sakta. 1 se shuru karne ka
--- ek hi tarika hai: sab mitao, counter reset karo, dobara daalo.
+-- Ticket ka id `generated always as identity` hai — beech me se badla
+-- nahi ja sakta. 1 se shuru karne ka ek hi tarika: sab mitao, counter
+-- reset karo, dobara daalo.
 --
 -- STEP 1 — pehle YE chalaiye aur dekhiye kya-kya mitega:
---
---   select id, subject, company_name, raised_by_email, status
---     from public.tickets order by id;
---
--- Koi ASLI ticket (kisi customer ka bheja hua) dikhe to ruk jaaiye.
+--   select id, subject, company_name, status from public.tickets order by id;
+-- Koi ASLI ticket (customer ka bheja hua) dikhe to ruk jaaiye.
 --
 -- STEP 2 — sab test/import data hi ho, tab poora chalaiye.
 -- =====================================================================
@@ -24,34 +21,39 @@ alter table public.tickets alter column id restart with 1;
 
 
 -- ---------------------------------------------------------------- purane
--- 11 Fabhind tasks jo ho chuke hain (sheet ke rows 1-14; 5, 9, 12 nahi aaye).
+-- Sheet ke rows 1-16 me se 13 (5, 9, 12 nahi the).
 --
--- Teen cheezein dhyan se ki hain:
+-- STATUS ka faisla:
+--   "Done" / "Done(...)"  -> resolved  (10 rows)
+--   baaki teen            -> closed    (band to hue, par kaam poora nahi)
 --
--- 1. Row 13 ko RESOLVED nahi kiya. Uski sheet me likha hai "Report
---    generating Done (MAIL config pending)" — yani mail ka kaam abhi
---    baaki hai. Use open rakha hai aur sheet wala status description me
---    daal diya. Galat lage to ticket kholkar ek click me resolved kar
---    dijiye.
+--     #13  "Report generating Done (MAIL config pending)"
+--     #15  "This option not available in our version"
+--     #16  "Required sender and reciver mail"
 --
--- 2. Jinki due date khali thi (rows 6 aur 13), unme close date daali —
---    wo bhi na ho to created date. Khali chhodte to trigger AAJ ki
---    tareekh bhar deta, jo mahine purane record par bilkul galat hota.
+-- Inhe bhi 'resolved' kar dete to Analytics me ye "kar diye" me gin
+-- jaate — jabki #15 to ho hi nahi sakta tha. 'closed' se farq bana
+-- rehta hai. Galat lage to ticket kholkar badal dijiye.
 --
--- 3. Row 3 me close date (21 May) create date (23 May) se PEHLE ki hai.
---    Sheet me jo likha tha wahi rakha hai, badla nahi — par ye galti
---    lagti hai, dekh lijiyega.
+-- Sheet ka status text description me bhi daala hai, warna
+-- "Done(192.168.1.100 D:)" jaisi jaankari (backup kahan pada hai)
+-- hamesha ke liye kho jaati.
+--
+-- DEKH LIJIYEGA:
+--   #6   'Done' hai par close date nahi thi — resolved_at khali chhoda
+--   #16  created 8 June hai par due 7 June, yani due date create se
+--        PEHLE. Sheet me jo tha wahi rakha, badla nahi.
 insert into public.tickets
   (subject, description, company_name, priority, status, raised_by_email,
    created_at, due_date, resolved_at)
 values
   ('AV Server Movement to V to P', 'AV Server Movement to V to P', 'Fabhind', 'high', 'resolved', 'vahorajuned858@gmail.com', '2026-05-21'::timestamptz, '2026-05-30'::date, '2026-05-22'::timestamptz),
   ('Av Server Delete once tranfer', 'Av Server Delete once tranfer', 'Fabhind', 'high', 'resolved', 'vahorajuned858@gmail.com', '2026-05-21'::timestamptz, '2026-05-30'::date, '2026-06-06'::timestamptz),
-  ('I Drive backup Schedule', 'I Drive backup Schedule', 'Fabhind', 'high', 'resolved', 'vahorajuned858@gmail.com', '2026-05-23'::timestamptz, '2026-05-23'::date, '2026-05-21'::timestamptz),
+  ('I Drive backup Schedule', 'I Drive backup Schedule', 'Fabhind', 'high', 'resolved', 'vahorajuned858@gmail.com', '2026-05-21'::timestamptz, '2026-05-23'::date, '2026-05-21'::timestamptz),
   ('Firewalls Backup', 'Firewalls Backup', 'Fabhind', 'high', 'resolved', 'vahorajuned858@gmail.com', '2026-06-04'::timestamptz, '2026-06-04'::date, '2026-06-04'::timestamptz),
   ('CCTV Backup', 'CCTV Backup
 
-Status from sheet: Done(192.168.1.100 D:)', 'Fabhind', 'high', 'resolved', 'vahorajuned858@gmail.com', '2026-05-25'::timestamptz, '2026-05-25'::date, null),
+Status from sheet: Done(192.168.1.100 D:)', 'Fabhind', 'high', 'resolved', 'vahorajuned858@gmail.com', '2026-05-25'::timestamptz, '2026-06-07'::date, null),
   ('Antivirus Backup', 'Antivirus Backup
 
 Status from sheet: Done(192.168..1.100 D:)', 'Fabhind', 'high', 'resolved', 'vahorajuned858@gmail.com', '2026-05-27'::timestamptz, '2026-06-07'::date, '2026-06-07'::timestamptz),
@@ -60,8 +62,14 @@ Status from sheet: Done(192.168..1.100 D:)', 'Fabhind', 'high', 'resolved', 'vah
   ('Change VM local administrator passwords', 'Change VM local administrator passwords', 'Fabhind', 'high', 'resolved', 'vahorajuned858@gmail.com', '2026-05-28'::timestamptz, '2026-06-07'::date, '2026-06-07'::timestamptz),
   ('end point securite report setup on mail (file opening,pendrive cpy paste)', 'end point securite report setup on mail (file opening,pendrive cpy paste)
 
-Status from sheet: Report generating Done (MAIL config pending)', 'Fabhind', 'high', 'open', 'vahorajuned858@gmail.com', '2026-06-06'::timestamptz, '2026-06-07'::date, null),
-  ('make one AV police that stops user to surfing on internet in server only mail can run', 'make one AV police that stops user to surfing on internet in server only mail can run', 'Fabhind', 'high', 'resolved', 'vahorajuned858@gmail.com', '2026-06-06'::timestamptz, '2026-06-07'::date, '2026-06-07'::timestamptz);
+Status from sheet: Report generating Done (MAIL config pending)', 'Fabhind', 'high', 'closed', 'vahorajuned858@gmail.com', '2026-06-06'::timestamptz, '2026-06-07'::date, '2026-06-07'::timestamptz),
+  ('make one AV police that stops user to surfing on internet in server only mail can run', 'make one AV police that stops user to surfing on internet in server only mail can run', 'Fabhind', 'high', 'resolved', 'vahorajuned858@gmail.com', '2026-06-06'::timestamptz, '2026-06-07'::date, '2026-06-07'::timestamptz),
+  ('QNAP screening ON(only .csv) file only', 'QNAP screening ON(only .csv) file only
+
+Status from sheet: This option not available in our version', 'Fabhind', 'high', 'closed', 'vahorajuned858@gmail.com', '2026-06-07'::timestamptz, '2026-06-07'::date, '2026-06-07'::timestamptz),
+  ('Notify when the QNAP device is turn OFF/ON', 'Notify when the QNAP device is turn OFF/ON
+
+Status from sheet: Required sender and reciver mail', 'Fabhind', 'high', 'closed', 'vahorajuned858@gmail.com', '2026-06-08'::timestamptz, '2026-06-07'::date, '2026-06-07'::timestamptz);
 
 
 -- ---------------------------------------------------------------- naye
@@ -137,8 +145,6 @@ values
 
 
 -- ---------------------------------------------------------------- assign
--- Fabhind ke SAARE tickets AG-1 ko (purane bhi, naye bhi).
--- Purane wo hi hain jo unhone khud kiye the, isliye resolved_by bhi wahi.
 do $$
 declare
   v_agent uuid;
@@ -157,12 +163,12 @@ begin
      set assigned_to = v_agent
    where company_name = 'Fabhind';
 
-  -- resolved_by se hi Analytics ginti karta hai. Ye na bharte to unke
-  -- kiye hue 10 ticket kisi ke naam par nahi chadhte.
+  -- Analytics ki ginti resolved_by se hoti hai, status se nahi. Ye na
+  -- bharte to unke niptaaye hue 13 ticket kisi ke naam par na chadhte.
   update public.tickets
      set resolved_by = v_agent
    where company_name = 'Fabhind'
-     and status = 'resolved';
+     and status in ('resolved', 'closed');
 end $$;
 
 
@@ -170,6 +176,8 @@ end $$;
 select company_name,
        count(*) as tickets,
        count(*) filter (where status = 'resolved') as resolved,
+       count(*) filter (where status = 'closed')   as closed,
+       count(*) filter (where status = 'open')     as open,
        count(assigned_to) as assigned
   from public.tickets
  group by company_name
