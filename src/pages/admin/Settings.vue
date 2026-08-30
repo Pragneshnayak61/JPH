@@ -215,7 +215,8 @@
       <div>
         <p class="mb-2 text-p-sm font-medium text-ink-gray-6">Preview</p>
         <div class="rounded-xl border border-outline-gray-2 bg-surface-gray-1 p-4">
-          <div class="mb-4 flex items-center gap-3">
+          <!-- header -->
+          <div class="mb-4 flex items-start gap-3">
             <div
               class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg"
               :style="{ background: form.logo_url ? '#fff' : form.accent_color }"
@@ -231,29 +232,63 @@
               </span>
             </div>
             <div class="min-w-0">
-              <p class="truncate text-p-base font-semibold text-ink-gray-9">
+              <p class="text-p-base font-semibold text-ink-gray-9">
                 {{ form.guest_heading || "—" }}
               </p>
-              <p class="truncate text-p-sm text-ink-gray-6">
+              <!-- truncate NAHI: intro poora vakya hota hai, kat jaata to
+                   preview ka matlab hi na rehta. -->
+              <p class="text-p-sm leading-snug text-ink-gray-6">
                 {{ form.guest_intro || "—" }}
               </p>
             </div>
           </div>
+
+          <!-- form: asli labels, khali grey bars nahi -->
           <div class="rounded-lg border border-outline-gray-2 bg-surface-base p-3">
-            <div class="h-2 w-16 rounded bg-surface-gray-3"></div>
-            <div class="mt-2 h-7 rounded border border-outline-gray-2"></div>
-            <div class="mt-3 h-2 w-12 rounded bg-surface-gray-3"></div>
-            <div class="mt-2 h-7 rounded border border-outline-gray-2"></div>
+            <div v-for="f in previewFields" :key="f" class="mb-2.5">
+              <p class="mb-1 text-p-sm text-ink-gray-6">{{ f }}</p>
+              <div class="h-6 rounded border border-outline-gray-2 bg-surface-gray-1"></div>
+            </div>
+            <div class="mb-2.5">
+              <p class="mb-1 text-p-sm text-ink-gray-6">Describe the problem</p>
+              <div class="h-12 rounded border border-outline-gray-2 bg-surface-gray-1"></div>
+            </div>
             <div
-              class="mt-4 flex h-8 items-center justify-center rounded-lg text-p-sm font-medium text-white"
+              class="flex h-8 items-center justify-center rounded-lg text-p-sm font-medium text-white"
               :style="{ background: form.accent_color }"
             >
               {{ form.guest_submit_label || "Submit" }}
             </div>
           </div>
+
+          <!-- footer bhi, kyunki legal name aur email yahin set hote hain -->
+          <div class="mt-4 border-t border-outline-gray-2 pt-3 text-center">
+            <p class="text-p-sm text-ink-gray-5">
+              &copy; {{ form.legal_name?.trim() || form.company_name || "—" }}.
+              All rights reserved.
+            </p>
+            <p v-if="form.contact_email?.trim()" class="text-p-sm text-ink-gray-5">
+              {{ form.contact_email }}
+            </p>
+          </div>
         </div>
+
+        <!-- thank-you page ka apna preview: wo alag screen hai, form ke
+             saath dikhane se dono ka matlab confuse hota. -->
+        <div
+          class="mt-3 rounded-xl border border-outline-gray-2 bg-surface-gray-1 p-4 text-center"
+        >
+          <p class="text-p-sm font-medium text-ink-gray-8">
+            {{ form.thanks_title || "—" }}
+          </p>
+          <p class="mt-1 text-p-sm leading-snug text-ink-gray-6">
+            {{ form.thanks_message || "—" }}
+          </p>
+        </div>
+
         <p class="mt-2 text-p-sm text-ink-gray-5">
-          Rough preview. Open the support page to see the real thing.
+          Colours and wording only. Open the support page to see the real
+          layout.
         </p>
       </div>
     </div>
@@ -278,6 +313,12 @@ const saveError = ref("");
 const uploadError = ref("");
 const savedAt = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
+
+// Asli form ke fields, usi kram me. Hardcoded hai — preview me asli
+// dropdown/editor chalane ka koi faayda nahi, sirf shakl dikhani hai.
+const previewFields = [
+  "Your name", "Email", "Company name", "Category", "Subject", "Priority",
+];
 
 // ---------------------------------------------------------------- categories
 type Category = { id: string; name: string; is_active: boolean; sort_order: number };
