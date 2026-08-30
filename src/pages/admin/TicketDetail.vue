@@ -77,23 +77,61 @@
               {{ formatDate(m.created_at) }}
             </span>
           </div>
-          <p class="whitespace-pre-wrap text-p-base text-ink-gray-8">{{ m.body }}</p>
+          <p class="whitespace-pre-wrap text-p-base text-ink-gray-8">
+            <template v-for="(part, i) in splitMentions(m.body)" :key="i">
+              <span
+                v-if="part.isMention"
+                class="rounded bg-surface-blue-2 px-1 font-medium text-ink-blue-3"
+                >{{ part.text }}</span
+              >
+              <template v-else>{{ part.text }}</template>
+            </template>
+          </p>
         </div>
       </div>
 
       <!-- reply box -->
       <div class="border-t border-outline-gray-2 px-6 py-4">
-        <FormControl
-          v-model="reply"
-          type="textarea"
-          :rows="3"
-          :placeholder="
-            isInternal
-              ? 'Internal note — the customer will not see this'
-              : 'Write a reply...'
-          "
-          :disabled="sending"
-        />
+        <div class="relative">
+          <FormControl
+            ref="replyBox"
+            v-model="reply"
+            type="textarea"
+            :rows="3"
+            :placeholder="
+              isInternal
+                ? 'Internal note — type @ to mention someone'
+                : 'Write a reply...'
+            "
+            :disabled="sending"
+            @keyup="onReplyKeyup"
+          />
+
+          <!-- @ ke baad list. Sirf internal note me — public reply me
+               mention ka koi matlab nahi, wo customer ko jaata hai. -->
+          <div
+            v-if="mentionOpen && isInternal"
+            class="absolute bottom-full left-0 z-10 mb-1 max-h-48 w-64 overflow-auto rounded-lg border border-outline-gray-2 bg-surface-base py-1 shadow-lg"
+          >
+            <button
+              v-for="d in mentionMatches"
+              :key="d.id"
+              class="block w-full px-3 py-1.5 text-left text-p-sm hover:bg-surface-gray-2"
+              @click="pickMention(d)"
+            >
+              <span class="text-ink-gray-8">{{ d.label }}</span>
+              <span v-if="d.specialization" class="text-ink-gray-5">
+                · {{ d.specialization }}
+              </span>
+            </button>
+            <p
+              v-if="!mentionMatches.length"
+              class="px-3 py-1.5 text-p-sm text-ink-gray-5"
+            >
+              No match
+            </p>
+          </div>
+        </div>
         <div class="mt-2 flex items-center justify-between">
           <label class="flex items-center gap-2 text-p-sm text-ink-gray-6">
             <input v-model="isInternal" type="checkbox" class="rounded" />
@@ -326,6 +364,88 @@ const sending = ref(false);
 const replyError = ref("");
 // null = abhi koi reply nahi bheji; true/false = pichhli mail gayi ya nahi
 const emailSent = ref<boolean | null>(null);
+// ---------------------------------------------------------------- mentions
+type Directory = { id: string; label: string; specialization: string | null };
+const directory = ref<Directory[]>([]);
+const mentionOpen = ref(false);
+const mentionQuery = ref("");
+
+const mentionMatches = computed(() => {
+  const q = mentionQuery.value.toLowerCase();
+  return directory.value
+    .filter((d) => !q || d.label.toLowerCase().includes(q)
+                || (d.specialization ?? "").toLowerCase().includes(q))
+    .slice(0, 8);
+});
+
+/**
+ * Cursor se pehle "@abc" jaisa kuch hai ya nahi, ye dekhta hai.
+ *
+ * Sirf tab khulta hai jab @ ek naye shabd ki shuruaat me ho — warna
+ * email likhte waqt ("a@b.com") bhi list khul jaati.
+ */
+function onReplyKeyup(e: KeyboardEvent) {
+  if (!isInternal.value) {
+    mentionOpen.value = false;
+    return;
+  }
+  const el = e.target as HTMLTextAreaElement;
+  const upto = reply.value.slice(0, el.selectionStart ?? 0);
+  const m = upto.match(/(?:^|\s)@([\w-]*)$/);
+  if (m) {
+    mentionQuery.value = m[1];
+    mentionOpen.value = true;
+  } else {
+    mentionOpen.value = false;
+  }
+}
+
+/**
+ * "@AG-01" dhoondhne wali regex.
+ *
+ * Do baatein zaroori hain, aur dono bhoolne par chup-chaap galat kaam
+ * karti hain:
+ *
+ * 1. Template literal me `\w` likhne par JS backslash gira deta hai —
+ *    regex `[w-]` ban jaati hai, `[\w-]` nahi. Isliye normal string me
+ *    "\\w" likha hai.
+ *
+ * 2. Label me regex ke special akshar ho sakte hain (admin ID kuch bhi
+ *    rakh sakta hai, jaise "AG.01"). Bina escape kiye "." har akshar se
+ *    match kar jaata.
+ */
+function mentionRegex(label: string) {
+  const safe = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp("@" + safe + "(?![\\w-])");
+}
+
+function pickMention(d: Directory) {
+  // Aakhri "@abc" ko poore label se badal do.
+  reply.value = reply.value.replace(/(^|\s)@[\w-]*$/, `$1@${d.label} `);
+  mentionOpen.value = false;
+}
+
+/**
+ * Message ko tukdo me todta hai taaki @AG-02 ko alag rang de sakein.
+ * v-html se karte to guest ka bheja HTML bhi chal jaata — yahan sirf
+ * text hai, isliye ye tarika surakshit hai.
+ */
+function splitMentions(body: string) {
+  const known = directory.value.map((d) => d.label);
+  const out: { text: string; isMention: boolean }[] = [];
+  const re = /@([\w-]+)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body))) {
+    if (!known.includes(m[1])) continue;
+    if (m.index > last) out.push({ text: body.slice(last, m.index), isMention: false });
+    out.push({ text: m[0], isMention: true });
+    last = m.index + m[0].length;
+  }
+  if (last < body.length) out.push({ text: body.slice(last), isMention: false });
+  return out;
+}
+
 const showDelete = ref(false);
 const deleting = ref(false);
 const deleteError = ref("");
@@ -411,6 +531,9 @@ async function load() {
     const withRole = (d: any) =>
       d.specialization ? `${d.label} · ${d.specialization}` : d.label;
 
+    directory.value = (dir ?? []).map((d: any) => ({
+      id: d.id, label: d.label, specialization: d.specialization,
+    }));
     staffLabels.value = Object.fromEntries(
       (dir ?? []).map((d: any) => [d.id, withRole(d)])
     );
@@ -462,6 +585,24 @@ async function sendReply() {
     // hai — galti se chala gaya to wapas nahi le sakte.
     if (!isInternal.value && msg) {
       emailSent.value = await notify("agent_reply", { message_id: msg.id });
+    }
+
+    // Mentions alag table me. Body me se dhoondhte hain, na ki UI ke
+    // state se — user pick karke text haath se mita bhi sakta hai.
+    if (isInternal.value && msg) {
+      const hit = directory.value.filter((d) =>
+        mentionRegex(d.label).test(reply.value)
+      );
+      if (hit.length) {
+        await supabase.from("message_mentions").insert(
+          hit.map((d) => ({
+            message_id: msg.id,
+            ticket_id: Number(props.id),
+            profile_id: d.id,
+            mentioned_by: auth.profile?.id ?? null,
+          }))
+        );
+      }
     }
 
     // Public reply ka matlab hai gend ab customer ke paale me hai.
