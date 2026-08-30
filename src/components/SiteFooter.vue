@@ -1,5 +1,8 @@
 <template>
-  <footer class="mt-10 border-t border-outline-gray-2 pt-5 text-center">
+  <footer
+    class="border-t border-outline-gray-2 text-center"
+    :class="compact ? 'mt-6 px-6 py-4' : 'mt-10 pt-5'"
+  >
     <p class="text-p-sm text-ink-gray-5">
       &copy; {{ name }}. All rights reserved.
     </p>
@@ -12,6 +15,10 @@
 <script setup lang="ts">
 import { useSettingsStore } from "@/stores/settings";
 import { computed, onMounted } from "vue";
+
+// Admin pages par chhota rakhte hain — wahan footer kaam ki cheez nahi,
+// bas maujood hona chahiye. Guest pages par wo page ka hissa hai.
+withDefaults(defineProps<{ compact?: boolean }>(), { compact: false });
 
 const store = useSettingsStore();
 

@@ -96,11 +96,14 @@
           Keep this page bookmarked to check back on your ticket.
         </p>
       </template>
+
+      <SiteFooter />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import SiteFooter from "@/components/SiteFooter.vue";
 import { looksLikeHtml, safeHtml } from "@/lib/richText";
 import { supabase } from "@/lib/supabase";
 import {

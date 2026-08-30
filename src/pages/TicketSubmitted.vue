@@ -1,8 +1,11 @@
 <template>
   <div class="flex min-h-full items-center justify-center bg-surface-gray-1 p-4">
-    <div
-      class="w-full max-w-md rounded-xl border border-outline-gray-2 bg-surface-base p-8 text-center shadow-sm"
-    >
+    <!-- Footer card ke BAHAR chahiye. Andar rakhne par wo safed card ka
+         hissa lagta hai, jabki wo poore page ka footer hai. -->
+    <div class="w-full max-w-md">
+      <div
+        class="rounded-xl border border-outline-gray-2 bg-surface-base p-8 text-center shadow-sm"
+      >
       <div
         class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-surface-green-2"
       >
@@ -42,14 +45,18 @@
       >
         View my ticket
       </Button>
-      <Button variant="subtle" class="mt-2 w-full" @click="router.push('/')">
-        Submit another ticket
-      </Button>
+        <Button variant="subtle" class="mt-2 w-full" @click="router.push('/')">
+          Submit another ticket
+        </Button>
+      </div>
+
+      <SiteFooter />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import SiteFooter from "@/components/SiteFooter.vue";
 import { Button, FeatherIcon } from "frappe-ui";
 import { useSettingsStore } from "@/stores/settings";
 import { computed, onMounted, ref } from "vue";

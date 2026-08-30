@@ -50,11 +50,14 @@
         <RouterLink to="/" class="underline">Go here</RouterLink>
         &mdash; no sign-in required
       </p>
+
+      <SiteFooter />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import SiteFooter from "@/components/SiteFooter.vue";
 import { supabase } from "@/lib/supabase";
 import { Button, ErrorMessage, FormControl } from "frappe-ui";
 import { useAuthStore } from "@/stores/auth";

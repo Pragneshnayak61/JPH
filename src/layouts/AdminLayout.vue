@@ -55,13 +55,20 @@
     </aside>
 
     <!-- content -->
-    <main class="min-w-0 flex-1 overflow-auto bg-surface-base">
-      <RouterView />
+    <!-- Footer main ke ANDAR hai, bahar nahi — bahar rakhte to wo
+         sidebar ke neeche bhi chala jaata aur page ke saath scroll bhi
+         nahi hota. -->
+    <main class="flex min-w-0 flex-1 flex-col overflow-auto bg-surface-base">
+      <div class="flex-1">
+        <RouterView />
+      </div>
+      <SiteFooter compact />
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
+import SiteFooter from "@/components/SiteFooter.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useSettingsStore } from "@/stores/settings";
 import { Avatar, FeatherIcon } from "frappe-ui";
