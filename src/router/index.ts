@@ -74,6 +74,11 @@ const routes: RouteRecordRaw[] = [
         meta: { admin: true },
       },
       {
+        path: "analytics",
+        name: "Analytics",
+        component: () => import("@/pages/admin/Analytics.vue"),
+      },
+      {
         // `can_change_settings` permission wale agent bhi khol sakte hain,
         // isliye admin-only nahi rakha. Asli rok RLS me hai — bina
         // permission ke save fail hoga.

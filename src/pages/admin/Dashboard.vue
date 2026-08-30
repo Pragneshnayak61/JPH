@@ -1,9 +1,12 @@
 <template>
   <div class="p-6">
-    <h1 class="text-xl font-semibold text-ink-gray-9">Dashboard</h1>
-    <p class="mt-1 text-p-base text-ink-gray-6">
-      Every ticket lands here
-    </p>
+    <div class="flex items-start justify-between">
+      <div>
+        <h1 class="text-xl font-semibold text-ink-gray-9">Dashboard</h1>
+        <p class="mt-1 text-p-base text-ink-gray-6">Every ticket lands here</p>
+      </div>
+      <Button variant="solid" @click="openNew">New ticket</Button>
+    </div>
 
     <!-- stat tiles -->
     <div class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -70,13 +73,75 @@
         </div>
       </RouterLink>
     </div>
+
+    <!-- Agent/admin khud ticket bana sake — jaise phone par baat hui ho -->
+    <Dialog v-model="showNew" :options="{ title: 'New ticket', size: 'md' }">
+      <template #body-content>
+        <div class="space-y-3">
+          <FormControl
+            v-model="form.contact_name"
+            label="Customer name"
+            placeholder="Ramesh Kumar"
+            :disabled="creating"
+          />
+          <FormControl
+            v-model="form.email"
+            type="email"
+            label="Customer email"
+            placeholder="ramesh@company.com"
+            :disabled="creating"
+          />
+          <FormControl
+            v-model="form.company_name"
+            label="Company"
+            placeholder="New Client Pvt Ltd"
+            :disabled="creating"
+          />
+          <FormControl
+            v-model="form.subject"
+            label="Subject"
+            placeholder="One line about the problem"
+            :disabled="creating"
+          />
+          <FormControl
+            v-model="form.priority"
+            type="select"
+            label="Priority"
+            :options="priorityOptions"
+            :disabled="creating"
+          />
+          <FormControl
+            v-model="form.description"
+            type="textarea"
+            :rows="5"
+            label="What is the problem?"
+            :disabled="creating"
+          />
+          <ErrorMessage :message="createError" />
+        </div>
+      </template>
+      <template #actions>
+        <Button
+          variant="solid"
+          class="w-full"
+          :loading="creating"
+          @click="createTicket"
+        >
+          Create ticket
+        </Button>
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { supabase } from "@/lib/supabase";
-import { Badge, LoadingIndicator } from "frappe-ui";
-import { computed, onMounted, ref } from "vue";
+import { useAuthStore } from "@/stores/auth";
+import {
+  Badge, Button, Dialog, ErrorMessage, FormControl, LoadingIndicator,
+} from "frappe-ui";
+import { computed, onMounted, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
 
 type Ticket = {
   id: number;
@@ -115,6 +180,67 @@ const stats = computed(() => {
     { label: "Resolved", value: by("resolved") },
   ];
 });
+
+// ---------------------------------------------------------------- new ticket
+const auth = useAuthStore();
+const router = useRouter();
+const showNew = ref(false);
+const creating = ref(false);
+const createError = ref("");
+const priorityOptions = [
+  { label: "Low", value: "low" },
+  { label: "Medium", value: "medium" },
+  { label: "High", value: "high" },
+  { label: "Urgent", value: "urgent" },
+];
+const form = reactive({
+  contact_name: "", email: "", company_name: "",
+  subject: "", priority: "medium", description: "",
+});
+
+function openNew() {
+  createError.value = "";
+  Object.assign(form, {
+    contact_name: "", email: "", company_name: "",
+    subject: "", priority: "medium", description: "",
+  });
+  showNew.value = true;
+}
+
+async function createTicket() {
+  createError.value = "";
+  if (!form.email.trim()) return (createError.value = "Customer email is required");
+  if (!form.subject.trim()) return (createError.value = "Subject is required");
+  if (!form.description.trim()) return (createError.value = "Please describe the problem");
+
+  creating.value = true;
+  try {
+    // Yahan seedha insert kar rahe hain, guest wala RPC nahi — staff ke
+    // paas tickets par insert ki permission hai (tickets_staff_insert),
+    // aur created_by set karna hai taaki pata rahe kisne banaya.
+    const { data, error: e } = await supabase
+      .from("tickets")
+      .insert({
+        subject: form.subject.trim(),
+        description: form.description.trim(),
+        priority: form.priority,
+        raised_by_email: form.email.trim().toLowerCase(),
+        contact_name: form.contact_name.trim() || null,
+        company_name: form.company_name.trim() || null,
+        created_by: auth.profile?.id ?? null,
+      })
+      .select("id")
+      .single();
+    if (e) throw e;
+
+    showNew.value = false;
+    router.push(`/admin/tickets/${data.id}`);
+  } catch (e: any) {
+    createError.value = e?.message || "Could not create the ticket";
+  } finally {
+    creating.value = false;
+  }
+}
 
 onMounted(async () => {
   try {

@@ -71,6 +71,7 @@ onMounted(() => settingsStore.load());
 // hai — user click karke bounce ho, isse bura kuch nahi.
 const nav = computed(() => [
   { to: "/admin", label: "Dashboard", icon: "home" },
+  { to: "/admin/analytics", label: "Analytics", icon: "bar-chart-2" },
   ...(auth.isAdmin
     ? [{ to: "/admin/agents", label: "People", icon: "users" }]
     : []),
