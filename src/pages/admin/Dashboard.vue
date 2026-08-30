@@ -20,6 +20,40 @@
       </div>
     </div>
 
+    <!-- Filters. Ek hi row me, table ke upar — har column ka apna
+         filter hota to milakar dekhna mushkil ho jaata. -->
+    <div class="mt-5 flex flex-wrap items-end gap-3">
+      <div class="w-40">
+        <FormLabel label="Status" />
+        <FormControl v-model="filters.status" type="select" :options="statusFilterOptions" />
+      </div>
+      <div class="w-40">
+        <FormLabel label="Company" />
+        <FormControl v-model="filters.company" type="select" :options="companyOptions" />
+      </div>
+      <div class="w-52">
+        <FormLabel label="Agent" />
+        <FormControl v-model="filters.agent" type="select" :options="agentFilterOptions" />
+      </div>
+      <div class="w-56">
+        <FormLabel label="Search" />
+        <FormControl v-model="filters.q" placeholder="Subject or company..." />
+      </div>
+
+      <div class="flex items-center gap-3 pb-1">
+        <span class="text-p-sm text-ink-gray-6">
+          {{ visibleTickets.length }} of {{ tickets.length }}
+        </span>
+        <button
+          v-if="hasFilters"
+          class="text-p-sm text-ink-gray-6 underline hover:text-ink-gray-8"
+          @click="clearFilters"
+        >
+          Clear
+        </button>
+      </div>
+    </div>
+
     <!-- Bulk bar. Tabhi dikhta hai jab kuch chuna ho — hamesha dikhane
          se ek khali patti pade rehti hai jo jagah bhi khaati hai aur
          batati kuch nahi. -->
@@ -102,9 +136,11 @@
               {{ error }}
             </td>
           </tr>
-          <tr v-else-if="!tickets.length">
+          <tr v-else-if="!sortedTickets.length">
             <td colspan="9" class="px-4 py-10 text-center text-ink-gray-5">
-              No tickets yet.
+              <!-- Filter lagi ho to "No tickets yet" jhooth hai —
+                   tickets hain, bas dikh nahi rahe. -->
+              {{ hasFilters ? "No tickets match these filters." : "No tickets yet." }}
             </td>
           </tr>
           <tr
@@ -279,8 +315,8 @@
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth";
 import {
-  Avatar, Badge, Button, Dialog, ErrorMessage, FormControl, LoadingIndicator,
-  toast,
+  Avatar, Badge, Button, Dialog, ErrorMessage, FormControl, FormLabel,
+  LoadingIndicator, toast,
 } from "frappe-ui";
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
@@ -316,8 +352,58 @@ const STATUS_ORDER: Record<string, number> = {
   open: 0, replied: 1, resolved: 2, closed: 3,
 };
 
+const filters = reactive({ status: "", company: "", agent: "", q: "" });
+
+const hasFilters = computed(
+  () => !!(filters.status || filters.company || filters.agent || filters.q.trim())
+);
+function clearFilters() {
+  Object.assign(filters, { status: "", company: "", agent: "", q: "" });
+}
+
+const statusFilterOptions = [
+  { label: "All", value: "" },
+  { label: "Open", value: "open" },
+  { label: "Replied", value: "replied" },
+  { label: "Resolved", value: "resolved" },
+  { label: "Closed", value: "closed" },
+];
+
+// Company ki list tickets se hi banti hai — alag table nahi hai, aur
+// haath se likhne par nayi company jodte hi list purani ho jaati.
+const companyOptions = computed(() => {
+  const names = [...new Set(
+    tickets.value.map((t) => t.company_name).filter(Boolean) as string[]
+  )].sort();
+  return [{ label: "All", value: "" },
+          ...names.map((n) => ({ label: n, value: n }))];
+});
+
+const agentFilterOptions = computed(() => [
+  { label: "All", value: "" },
+  { label: "Unassigned", value: "__none__" },
+  ...Object.entries(staff.value).map(([id, d]) => ({
+    label: d.specialization ? `${d.label} · ${d.specialization}` : d.label,
+    value: id,
+  })),
+]);
+
+const visibleTickets = computed(() =>
+  tickets.value.filter((t) => {
+    if (filters.status && t.status !== filters.status) return false;
+    if (filters.company && t.company_name !== filters.company) return false;
+    if (filters.agent === "__none__" && t.assigned_to) return false;
+    if (filters.agent && filters.agent !== "__none__"
+        && t.assigned_to !== filters.agent) return false;
+    const q = filters.q.trim().toLowerCase();
+    if (q && !`${t.subject} ${t.company_name ?? ""}`.toLowerCase().includes(q))
+      return false;
+    return true;
+  })
+);
+
 const sortedTickets = computed(() =>
-  [...tickets.value].sort((a, b) => {
+  [...visibleTickets.value].sort((a, b) => {
     const s = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
     if (s !== 0) return s;
 
@@ -383,8 +469,14 @@ const bulkStatusOptions = [
   { label: "Closed", value: "closed" },
 ];
 
+// Tulna DIKHNE WALE rows se, saare tickets se nahi. Filter lagi ho to
+// toggleAll sirf dikhne wale chunta hai — agar yahan poori list se
+// tulna karte, to checkbox kabhi tick hi na hota aur dobara click
+// karne par clear hone ke bajaye aur jud jaate.
 const allSelected = computed(
-  () => tickets.value.length > 0 && selected.size === tickets.value.length
+  () =>
+    sortedTickets.value.length > 0 &&
+    sortedTickets.value.every((t) => selected.has(t.id))
 );
 
 function toggleAll() {
