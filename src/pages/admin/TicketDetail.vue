@@ -223,19 +223,6 @@
       </div>
 
       <div class="space-y-2 border-t border-outline-gray-2 pt-4 text-p-sm">
-        <!-- Kisne banaya. Staff ke banaye ticket par hi hota hai —
-             guest form se aaye ticket par created_by null rehta hai,
-             kyunki wahan koi logged-in user hota hi nahi. -->
-        <div
-          v-if="ticket.created_by && staffLabels[ticket.created_by]"
-          class="flex justify-between"
-        >
-          <span class="text-ink-gray-6">Created by</span>
-          <span class="text-ink-gray-8">
-            {{ staffLabels[ticket.created_by] }}
-          </span>
-        </div>
-
         <!-- Kisne niptaaya. Ye database khud bharta hai (trigger se) jab
              koi status resolved/closed karta hai. Pehle ye kahin dikhta
              hi nahi tha, isliye lagta tha ki field hai hi nahi — jabki

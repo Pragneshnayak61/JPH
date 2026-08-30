@@ -172,6 +172,16 @@ begin
 end $$;
 
 
+-- created_by bhi set karte hain. Ye tickets kisi customer ne nahi
+-- bheje, andar se daale gaye hain — aur UI isi field se tay karta hai
+-- ki "From" me email dikhaye ya "Internal".
+update public.tickets t
+   set created_by = p.id
+  from public.profiles p
+ where p.email = t.raised_by_email
+   and t.created_by is null;
+
+
 -- ---------------------------------------------------------------- check
 select company_name,
        count(*) as tickets,

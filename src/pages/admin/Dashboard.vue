@@ -99,7 +99,7 @@
 
     <!-- ticket list -->
     <div class="mt-6 overflow-x-auto rounded-lg border border-outline-gray-2">
-      <table class="w-full min-w-[1100px] text-p-base">
+      <table class="w-full min-w-[980px] text-p-base">
         <thead class="bg-surface-gray-1 text-p-sm text-ink-gray-6">
           <tr>
             <th class="w-10 px-3 py-2">
@@ -123,22 +123,21 @@
             <th class="w-28 px-3 py-2 text-left font-medium">Status</th>
             <th class="w-28 px-3 py-2 text-left font-medium">Priority</th>
             <th class="w-28 px-3 py-2 text-left font-medium">Due</th>
-            <th class="w-40 px-3 py-2 text-left font-medium">Created by</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="10" class="px-4 py-10 text-center">
+            <td colspan="9" class="px-4 py-10 text-center">
               <LoadingIndicator class="mx-auto h-5 w-5 text-ink-gray-5" />
             </td>
           </tr>
           <tr v-else-if="error">
-            <td colspan="10" class="px-4 py-10 text-center text-ink-red-3">
+            <td colspan="9" class="px-4 py-10 text-center text-ink-red-3">
               {{ error }}
             </td>
           </tr>
           <tr v-else-if="!sortedTickets.length">
-            <td colspan="10" class="px-4 py-10 text-center text-ink-gray-5">
+            <td colspan="9" class="px-4 py-10 text-center text-ink-gray-5">
               <!-- Filter lagi ho to "No tickets yet" jhooth hai —
                    tickets hain, bas dikh nahi rahe. -->
               {{ hasFilters ? "No tickets match these filters." : "No tickets yet." }}
@@ -186,11 +185,22 @@
               </span>
             </td>
             <td class="max-w-0 px-3 py-2.5">
+              <!--
+                Jis ticket ko kisi customer ne nahi bheja (staff ne khud
+                banaya, ya import hua), uska raised_by_email banane wale
+                ka apna hi email hota hai — kyunki wo column NOT NULL hai
+                aur khali nahi chhoda ja sakta.
+
+                Wo email dikhane ka koi matlab nahi: 77 rows me ek hi
+                cheez chhap jaati hai. Aise ticket par "Internal" likhna
+                zyada sach hai — usse ye bhi pata chalta hai ki ye bahar
+                se nahi aaya.
+              -->
               <span
                 class="block truncate text-p-sm text-ink-gray-6"
-                :title="t.contact_name || t.raised_by_email"
+                :title="fromLabel(t)"
               >
-                {{ t.contact_name || t.raised_by_email }}
+                {{ fromLabel(t) }}
               </span>
             </td>
             <td class="px-3 py-2.5">
@@ -234,18 +244,6 @@
                 {{ formatDue(t.due_date) }}
               </span>
               <span v-else class="text-p-sm text-ink-gray-4">—</span>
-            </td>
-            <td class="px-3 py-2.5">
-              <span
-                v-if="t.created_by && staff[t.created_by]"
-                class="block truncate text-p-sm text-ink-gray-6"
-                :title="staff[t.created_by].label"
-              >
-                {{ staff[t.created_by].label }}
-              </span>
-              <!-- Guest form se aaye ticket par created_by null hota
-                   hai — wahan koi logged-in user hi nahi hota. -->
-              <span v-else class="text-p-sm text-ink-gray-4">Customer</span>
             </td>
           </tr>
         </tbody>
@@ -351,7 +349,9 @@ type Ticket = {
 const tickets = ref<Ticket[]>([]);
 const loading = ref(true);
 const error = ref("");
-const staff = ref<Record<string, { label: string; specialization: string | null }>>({});
+const staff = ref<
+  Record<string, { label: string; email: string | null; specialization: string | null }>
+>({});
 
 /**
  * Kaam wale tickets upar, nipte hue neeche.
@@ -538,6 +538,26 @@ function bulkStatus(v: string) {
   applyToSelected({ status: v }, "updated");
 }
 
+/**
+ * "From" me kya dikhana hai.
+ *
+ * Teen soorat hain:
+ *   1. Customer ne bheja  -> usne jo naam likha
+ *   2. Staff ne banaya    -> banane wale ki pehchaan
+ *   3. Na naam, na creator -> jo email ticket par pada hai
+ *
+ * Doosri soorat me pehchaan ka wahi niyam lagta hai jo poore app me hai:
+ * admin ko email, baaki sabko sirf ID. Email server se hi tabhi aata
+ * hai jab dekhne wala admin ho (staff_directory me), isliye yahan
+ * chhupane ki zaroorat nahi — jo hai hi nahi wo dikhega kaise.
+ */
+function fromLabel(t: Ticket) {
+  if (t.contact_name) return t.contact_name;
+  const s = t.created_by ? staff.value[t.created_by] : null;
+  if (s) return s.email || s.label;
+  return t.raised_by_email;
+}
+
 function formatDue(d: string) {
   return new Date(d).toLocaleDateString(undefined, {
     day: "numeric", month: "short",
@@ -642,7 +662,11 @@ async function load() {
     staff.value = Object.fromEntries(
       (dir ?? []).map((d: any) => [
         d.id,
-        { label: d.label as string, specialization: d.specialization as string | null },
+        {
+          label: d.label as string,
+          email: (d.email ?? null) as string | null,
+          specialization: d.specialization as string | null,
+        },
       ])
     );
   } catch (e: any) {
