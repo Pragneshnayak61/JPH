@@ -159,6 +159,67 @@
       lock you out.
     </p>
 
+    <!-- deleted accounts -->
+    <div v-if="deleted.length" class="mt-8">
+      <button
+        class="flex items-center gap-1.5 text-lg font-semibold text-ink-gray-9"
+        @click="showDeleted = !showDeleted"
+      >
+        Removed accounts
+        <span class="text-p-sm font-normal text-ink-gray-5">
+          ({{ deleted.length }})
+        </span>
+        <FeatherIcon
+          :name="showDeleted ? 'chevron-up' : 'chevron-down'"
+          class="h-4 w-4 text-ink-gray-5"
+        />
+      </button>
+      <p class="mt-0.5 text-p-base text-ink-gray-6">
+        These people can no longer sign in. Kept so you can still tell who
+        an old ID belonged to.
+      </p>
+
+      <div
+        v-if="showDeleted"
+        class="mt-3 overflow-x-auto rounded-lg border border-outline-gray-2"
+      >
+        <table class="w-full min-w-[720px] text-p-base">
+          <thead class="bg-surface-gray-1 text-p-sm text-ink-gray-6">
+            <tr>
+              <th class="px-4 py-2 text-left font-medium">Person</th>
+              <th class="px-3 py-2 text-left font-medium">ID</th>
+              <th class="px-3 py-2 text-right font-medium">Had resolved</th>
+              <th class="px-3 py-2 text-left font-medium">Removed</th>
+              <th class="px-3 py-2 text-left font-medium">Removed by</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="d in deleted" :key="d.id" class="border-t border-outline-gray-2">
+              <td class="px-4 py-2.5">
+                <p class="text-ink-gray-8">{{ d.full_name || "—" }}</p>
+                <p class="text-p-sm text-ink-gray-5">{{ d.email }}</p>
+              </td>
+              <td class="px-3 py-2.5 text-ink-gray-7">
+                {{ d.agent_code || "—" }}
+                <span v-if="d.specialization" class="text-ink-gray-5">
+                  · {{ d.specialization }}
+                </span>
+              </td>
+              <td class="px-3 py-2.5 text-right tabular-nums text-ink-gray-7">
+                {{ d.resolved_count }}
+              </td>
+              <td class="px-3 py-2.5 text-p-sm text-ink-gray-6">
+                {{ formatDate(d.deleted_at) }}
+              </td>
+              <td class="px-3 py-2.5 text-p-sm text-ink-gray-6">
+                {{ d.deleted_by_label || "—" }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- roles -->
     <h2 class="mt-8 text-lg font-semibold text-ink-gray-9">Roles</h2>
     <p class="mt-1 text-p-base text-ink-gray-6">
@@ -330,7 +391,8 @@ import { notify } from "@/lib/notify";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth";
 import {
-  Avatar, Badge, Button, Dialog, ErrorMessage, FormControl, LoadingIndicator,
+  Avatar, Badge, Button, Dialog, ErrorMessage, FeatherIcon, FormControl,
+  LoadingIndicator,
 } from "frappe-ui";
 import { computed, onMounted, reactive, ref } from "vue";
 
@@ -366,6 +428,30 @@ const saving = ref<string | null>(null);
 const savingRole = ref<string | null>(null);
 const showHelp = ref(false);
 const lastCreated = ref("");
+type DeletedAccount = {
+  id: string; email: string; full_name: string | null;
+  agent_code: string | null; specialization: string | null;
+  resolved_count: number; deleted_at: string; deleted_by_label: string | null;
+};
+const deleted = ref<DeletedAccount[]>([]);
+const showDeleted = ref(false);
+
+function formatDate(s: string) {
+  return new Date(s).toLocaleDateString(undefined, {
+    day: "numeric", month: "short", year: "numeric",
+  });
+}
+
+async function loadDeleted() {
+  // Sirf admin padh sakta hai (RLS). Agent ke liye ye chup-chaap khali
+  // aayega, koi error nahi — aur section dikhega hi nahi.
+  const { data } = await supabase
+    .from("deleted_accounts")
+    .select("*")
+    .order("deleted_at", { ascending: false });
+  deleted.value = data ?? [];
+}
+
 const showDelete = ref(false);
 const toDelete = ref<Person | null>(null);
 const deleting = ref(false);
@@ -396,7 +482,7 @@ async function doDelete() {
     }
     if ((data as any)?.error) throw new Error((data as any).error);
     showDelete.value = false;
-    await load();
+    await Promise.all([load(), loadDeleted()]);
   } catch (e: any) {
     deleteError.value = e?.message || "Could not delete this person";
   } finally {
@@ -429,6 +515,7 @@ async function load() {
     if (e2) throw e2;
     people.value = (p as Person[]) ?? [];
     roles.value = (r as Role[]) ?? [];
+    await loadDeleted();
   } catch (e: any) {
     loadError.value = e?.message || "Could not load people";
   } finally {

@@ -136,6 +136,45 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Record PEHLE, delete BAAD me.
+    //
+    // auth.users mitte hi profiles ki row cascade ho jaati hai aur
+    // tickets par uska id null ho jaata hai. Baad me copy karne ki
+    // koshish karte to copy karne ko kuch bachta hi nahi.
+    const { data: full } = await admin
+      .from("profiles")
+      .select("id, email, full_name, agent_code, kind, specialization")
+      .eq("id", targetId)
+      .single();
+
+    if (full) {
+      // Kitne ticket niptaaye the — ye ginti delete ke BAAD nahi nikal
+      // sakti, kyunki tab tickets par uska id null ho chuka hoga.
+      const { count: resolved } = await admin
+        .from("tickets")
+        .select("id", { count: "exact", head: true })
+        .eq("resolved_by", targetId);
+
+      const { data: me } = await admin
+        .from("profiles")
+        .select("full_name, email, agent_code")
+        .eq("id", userData.user.id)
+        .single();
+
+      await admin.from("deleted_accounts").insert({
+        id: full.id,
+        email: full.email,
+        full_name: full.full_name,
+        agent_code: full.agent_code,
+        kind: full.kind,
+        specialization: full.specialization,
+        resolved_count: resolved ?? 0,
+        deleted_by: userData.user.id,
+        deleted_by_label:
+          me?.full_name || me?.email || me?.agent_code || "Administrator",
+      });
+    }
+
     const { error: delErr } = await admin.auth.admin.deleteUser(targetId);
     if (delErr) return json({ error: delErr.message }, 400, origin);
     return json({ ok: true }, 200, origin);
