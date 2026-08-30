@@ -156,15 +156,22 @@ type Totals = {
 };
 
 const RANGES = [
+  { label: "All time", days: null as number | null },
   { label: "7 days", days: 7 },
   { label: "30 days", days: 30 },
   { label: "90 days", days: 90 },
-  { label: "All time", days: null as number | null },
 ];
 
 const stats = ref<AgentStat[]>([]);
 const totals = ref<Totals | null>(null);
-const range = ref<number | null>(30);
+// Default "All time".
+//
+// Pehle 30 din tha, aur wo galat nikla: purane import kiye hue tickets
+// (May-June ke) filter se bahar reh jaate the, to chart khali dikhta
+// tha aur lagta tha ki kuch update hi nahi ho raha. Helpdesk me
+// "abhi tak kul kitna hua" pehla sawaal hota hai, "pichhle 30 din me"
+// nahi — wo chun kar dekhne wali cheez hai.
+const range = ref<number | null>(null);
 const loading = ref(true);
 const refreshing = ref(false);
 const error = ref("");
