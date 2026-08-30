@@ -59,36 +59,4 @@ drop trigger if exists site_settings_touch on public.site_settings;
 create trigger site_settings_touch before update on public.site_settings
   for each row execute function public.touch_site_settings();
 
-
--- ---------------------------------------------------------------- storage
--- Logo ke liye bucket. public = true, kyunki logo guest form par bina
--- login ke dikhna hai.
-insert into storage.buckets (id, name, public)
-values ('branding', 'branding', true)
-on conflict (id) do nothing;
-
--- Padhna sabke liye.
-drop policy if exists "branding public read" on storage.objects;
-create policy "branding public read" on storage.objects
-  for select using (bucket_id = 'branding');
-
--- Upload/badalna/hataana sirf settings badalne wale ko.
--- Teeno alag policies isliye ki Postgres me ek policy ek hi command
--- ke liye hoti hai — "for all" likhte to anon ko bhi lag jaati.
-drop policy if exists "branding upload" on storage.objects;
-create policy "branding upload" on storage.objects
-  for insert to authenticated
-  with check (bucket_id = 'branding' and public.has_perm('can_change_settings'));
-
-drop policy if exists "branding update" on storage.objects;
-create policy "branding update" on storage.objects
-  for update to authenticated
-  using (bucket_id = 'branding' and public.has_perm('can_change_settings'));
-
-drop policy if exists "branding delete" on storage.objects;
-create policy "branding delete" on storage.objects
-  for delete to authenticated
-  using (bucket_id = 'branding' and public.has_perm('can_change_settings'));
-
-
 select * from public.site_settings;
