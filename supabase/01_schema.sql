@@ -44,9 +44,9 @@ insert into public.roles (name, description, can_view_all_tickets, can_assign_ti
                           can_delete_tickets, can_manage_agents, can_manage_customers,
                           can_change_settings, is_system)
 values
-  ('Administrator', 'Sab kuch kar sakta hai', true, true, true, true, true, true, true),
-  ('Agent',         'Saare ticket dekh aur jawab de sakta hai', true, true, false, false, false, false, true),
-  ('Junior Agent',  'Sirf apne assign kiye ticket dekh sakta hai', false, false, false, false, false, false, true)
+  ('Administrator', 'Can do everything', true, true, true, true, true, true, true),
+  ('Agent',         'Can see and reply to every ticket', true, true, false, false, false, false, true),
+  ('Junior Agent',  'Can only see tickets assigned to them', false, false, false, false, false, false, true)
 on conflict (name) do nothing;
 
 
