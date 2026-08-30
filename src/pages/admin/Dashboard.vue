@@ -99,7 +99,7 @@
 
     <!-- ticket list -->
     <div class="mt-6 overflow-x-auto rounded-lg border border-outline-gray-2">
-      <table class="w-full min-w-[980px] text-p-base">
+      <table class="w-full min-w-[1020px] text-p-base">
         <thead class="bg-surface-gray-1 text-p-sm text-ink-gray-6">
           <tr>
             <th class="w-10 px-3 py-2">
@@ -116,10 +116,14 @@
                  milti hai. Baaki columns ko fix width di hai, warna wo
                  apne content se zyada jagah le lete the aur subject
                  bekaar me kat jaata tha. -->
-            <th class="w-32 px-3 py-2 text-left font-medium">Company</th>
+            <th class="w-28 px-3 py-2 text-left font-medium">Company</th>
             <th class="px-3 py-2 text-left font-medium">Subject</th>
-            <th class="w-44 px-3 py-2 text-left font-medium">From</th>
-            <th class="w-48 px-3 py-2 text-left font-medium">Assigned to</th>
+            <th class="w-36 px-3 py-2 text-left font-medium">From</th>
+            <!-- Chhota rakha hai. Isme aksar "AG-01" hi hota hai, aur
+                 specialization neeche doosri line me dene se column
+                 zaroorat se dugna chauda ho jaata tha — wo jagah
+                 subject ki thi. Ab specialization hover me. -->
+            <th class="w-32 px-3 py-2 text-left font-medium">Assigned to</th>
             <th class="w-28 px-3 py-2 text-left font-medium">Status</th>
             <th class="w-28 px-3 py-2 text-left font-medium">Priority</th>
             <th class="w-28 px-3 py-2 text-left font-medium">Due</th>
@@ -207,19 +211,12 @@
               <div
                 v-if="t.assigned_to && staff[t.assigned_to]"
                 class="flex items-center gap-2"
+                :title="assignedTitle(t)"
               >
                 <Avatar :label="staff[t.assigned_to].label" size="sm" />
-                <div class="min-w-0 leading-tight">
-                  <p class="truncate text-p-sm text-ink-gray-8">
-                    {{ staff[t.assigned_to].label }}
-                  </p>
-                  <p
-                    v-if="staff[t.assigned_to].specialization"
-                    class="truncate text-p-sm text-ink-gray-5"
-                  >
-                    {{ staff[t.assigned_to].specialization }}
-                  </p>
-                </div>
+                <span class="truncate text-p-sm text-ink-gray-8">
+                  {{ staff[t.assigned_to].label }}
+                </span>
               </div>
               <!-- Unassigned ko halka nahi, dikhne wala rakha hai — yahi
                    wo ticket hai jise koi utha hi nahi raha. -->
@@ -556,6 +553,19 @@ function fromLabel(t: Ticket) {
   const s = t.created_by ? staff.value[t.created_by] : null;
   if (s) return s.email || s.label;
   return t.raised_by_email;
+}
+
+/**
+ * Assigned column ka hover text — naam ke saath specialization.
+ *
+ * Column me sirf ID dikhti hai (jagah bachane ko). Specialization wahi
+ * cheez hai jisse pata chalta hai ki ticket sahi bande ke paas hai ya
+ * nahi, isliye use gayab nahi kar sakte — hover me daal diya.
+ */
+function assignedTitle(t: Ticket) {
+  const s = t.assigned_to ? staff.value[t.assigned_to] : null;
+  if (!s) return "";
+  return s.specialization ? `${s.label} · ${s.specialization}` : s.label;
 }
 
 function formatDue(d: string) {

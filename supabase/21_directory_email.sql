@@ -60,6 +60,7 @@ revoke all on function public.staff_directory() from public;
 grant execute on function public.staff_directory() to authenticated;
 
 
+select * from public.staff_directory();
 -- NOTE: yahan `select * from public.staff_directory()` MAT likhiye.
 -- Wo function is_staff() maangta hai, aur SQL Editor postgres role se
 -- chalta hai — wahan koi logged-in user hota hi nahi (auth.uid() null),
