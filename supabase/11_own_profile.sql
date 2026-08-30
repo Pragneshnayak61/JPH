@@ -22,6 +22,18 @@ security definer
 set search_path = public
 as $$
 begin
+  -- Server-side call (Edge Function service_role se chalta hai, uska
+  -- auth.uid() null hota hai). Bina is chhoot ke create-user function
+  -- ka legit update bhi block ho jaata tha, aur wo user delete karke
+  -- rollback kar deta tha — bahar se lagta "account bana hi nahi".
+  --
+  -- Surakshit hai: service_role key sirf Edge Function ke andar rehti
+  -- hai, browser me kabhi nahi. Browser se aane wale har call me
+  -- auth.uid() hota hai, to unpar rok pehle jaisi lagi rehti hai.
+  if auth.uid() is null then
+    return new;
+  end if;
+
   -- Admin par rok nahi — wo waise bhi sab kuch badal sakta hai.
   if public.is_admin_user() then
     return new;
