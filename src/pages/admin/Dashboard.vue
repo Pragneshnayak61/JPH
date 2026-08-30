@@ -151,6 +151,18 @@
             :options="priorityOptions"
             :disabled="creating"
           />
+
+          <div>
+            <FormControl
+              v-model="form.due_date"
+              type="date"
+              label="Due date"
+              :disabled="creating"
+            />
+            <p class="mt-1 text-p-sm text-ink-gray-5">
+              Leave blank and one is set from the priority.
+            </p>
+          </div>
           <FormControl
             v-model="form.description"
             type="textarea"
@@ -252,14 +264,14 @@ const priorityOptions = [
 ];
 const form = reactive({
   contact_name: "", email: "", company_name: "",
-  subject: "", priority: "medium", description: "",
+  subject: "", priority: "medium", description: "", due_date: "",
 });
 
 function openNew() {
   createError.value = "";
   Object.assign(form, {
     contact_name: "", email: "", company_name: "",
-    subject: "", priority: "medium", description: "",
+    subject: "", priority: "medium", description: "", due_date: "",
   });
   showNew.value = true;
 }
@@ -285,6 +297,8 @@ async function createTicket() {
         contact_name: form.contact_name.trim() || null,
         company_name: form.company_name.trim() || null,
         created_by: auth.profile?.id ?? null,
+        // khali chhoda to DB ka trigger priority se bhar dega
+        due_date: form.due_date || null,
       })
       .select("id")
       .single();
