@@ -476,7 +476,15 @@ async function createTicket() {
   }
 }
 
-onMounted(async () => {
+/**
+ * Tickets aur staff directory laata hai.
+ *
+ * Pehle ye seedha onMounted ke andar likha tha, aur maine bulk wale
+ * code me `load()` bula diya — jo tha hi nahi. Isliye bulk assign par
+ * "load is not defined" aa jaata tha: update DATABASE ME HO CHUKA
+ * hota tha, bas list refresh nahi hoti thi aur error dikh jaata tha.
+ */
+async function load() {
   try {
     const { data, error: err } = await supabase
       .from("tickets")
@@ -504,5 +512,7 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
-});
+}
+
+onMounted(load);
 </script>
