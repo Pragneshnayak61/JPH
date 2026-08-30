@@ -3,15 +3,25 @@
   "name": "it-helpdesk",
   "compatibility_date": "2026-08-28",
   "observability": { "enabled": true },
+
+  // Ye ek static site hai — koi Worker code nahi, isliye "main" nahi hai.
+  // Cloudflare sirf dist/ ki files serve karta hai.
   "assets": {
-    // Ye SPA routing sambhalta hai: /login ya /admin par direct jaane par
-    // index.html serve hoti hai aur Vue router aage ka kaam karta hai.
+    // Ye batana ZAROORI hai. Bina iske deploy fail hoti hai:
+    //   "The `assets` property in your configuration is missing the
+    //    required `directory` property."
+    // (Cloudflare khud jo file banata hai wo dist/ ke ANDAR hoti hai,
+    //  isliye usme directory nahi likhni padti — hamari root me hai.)
+    "directory": "./dist",
+
+    // SPA routing: /login ya /admin par direct jaane par index.html
+    // serve hoti hai aur Vue router aage sambhal leta hai.
     //
-    // Pehle iske liye public/_redirects me "/* /index.html 200" likha tha,
-    // par Cloudflare ne use REJECT kar diya:
+    // Pehle iske liye public/_redirects me "/* /index.html 200" tha,
+    // par Cloudflare ne use reject kiya:
     //   "Line 3: Infinite loop detected in this rule"
-    // Kyunki Workers Assets ye kaam khud karta hai, aur dono ek saath
-    // takra jaate hain. Isliye _redirects hata di gayi.
+    // Kyunki ye setting wahi kaam pehle se karti hai. Dono ek saath
+    // nahi chal sakte — isliye _redirects hata di gayi.
     "not_found_handling": "single-page-application"
   }
 }
