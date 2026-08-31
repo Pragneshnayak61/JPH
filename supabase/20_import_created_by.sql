@@ -14,25 +14,21 @@
 -- created_by set hote hi UI unhe "Internal" dikhane lagega, jo sach hai:
 -- ye tickets bahar se nahi aaye, andar se banaye gaye hain.
 
-do $$
-declare
-  v_admin uuid;
-begin
-  -- Wahi banda jiska email in tickets par pada hai — usi ne ye daale the.
-  select p.id into v_admin
-    from public.profiles p
-   where p.email = 'vahorajuned858@gmail.com'
-   limit 1;
-
-  if v_admin is null then
-    raise exception 'vahorajuned858@gmail.com naam ka koi profile nahi mila.';
-  end if;
-
-  update public.tickets
-     set created_by = v_admin
-   where created_by is null
-     and raised_by_email = 'vahorajuned858@gmail.com';
-end $$;
+-- Pehle yahan email hardcoded thi. Wo galat nikla: 23 chalne ke baad wo
+-- purana pata database me bachta hi nahi, aur ye script "koi profile nahi
+-- mila" bolkar ruk jaati thi.
+--
+-- Ab pehchaan email se nahi, RISHTE se hoti hai: jis ticket ka from-pata
+-- kisi admin/agent ka apna email hai, wo ticket usi ne andar se banayi
+-- thi. Guest tickets chhoot jaati hain kyunki guest staff nahi hota —
+-- aur unpar created_by lagana galat bhi hota, wo sach me bahar se aayi
+-- hain.
+update public.tickets t
+   set created_by = p.id
+  from public.profiles p
+ where t.created_by is null
+   and p.kind in ('admin', 'agent')
+   and lower(t.raised_by_email) = lower(p.email);
 
 
 select count(*) filter (where created_by is null)     as bina_creator,
