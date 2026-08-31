@@ -52,6 +52,14 @@ const routes: RouteRecordRaw[] = [
     name: "Login",
     component: () => import("@/pages/Login.vue"),
   },
+  {
+    // Supabase ke confirmation link yahan girte hain. Bina login ke
+    // khulna ZAROORI hai: email badalne wala link kabhi doosre browser me
+    // bhi khulta hai, jahan session hai hi nahi.
+    path: "/auth/callback",
+    name: "AuthCallback",
+    component: () => import("@/pages/AuthCallback.vue"),
+  },
 
   // ---------------------------------------------------------- staff
   {

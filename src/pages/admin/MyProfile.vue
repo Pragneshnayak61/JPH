@@ -32,7 +32,8 @@
           />
           <p class="mt-1 text-p-sm text-ink-gray-5">
             You sign in with this. Changing it sends a confirmation link to
-            the new address &mdash; the change only happens after you click it.
+            the new address &mdash; the change only happens after you click
+            it. Your tickets move to the new address as well.
           </p>
           <Button
             v-if="newEmail.trim() && newEmail.trim() !== auth.profile?.email"
@@ -51,6 +52,47 @@
           Other agents only ever see your ID &mdash; never your name or email.
           Only an administrator can change your ID or access level.
         </p>
+      </section>
+
+      <!-- password -->
+      <section class="rounded-lg border border-outline-gray-2 p-4">
+        <h2 class="text-p-base font-medium text-ink-gray-8">Password</h2>
+        <p class="mt-0.5 text-p-sm text-ink-gray-6">
+          Change the password you sign in with
+        </p>
+
+        <div class="mt-3 space-y-3">
+          <FormControl
+            v-model="pw.current"
+            type="password"
+            label="Current password"
+            :disabled="changingPw"
+          />
+          <FormControl
+            v-model="pw.next"
+            type="password"
+            label="New password"
+            :disabled="changingPw"
+          />
+          <FormControl
+            v-model="pw.confirm"
+            type="password"
+            label="Repeat new password"
+            :disabled="changingPw"
+            @keyup.enter="changePassword"
+          />
+        </div>
+
+        <p class="mt-2 text-p-sm text-ink-gray-5">
+          At least 8 characters. You stay signed in here; other devices keep
+          working until they sign out.
+        </p>
+
+        <Button class="mt-3" :loading="changingPw" @click="changePassword">
+          Change password
+        </Button>
+        <p v-if="pwMsg" class="mt-2 text-p-sm text-ink-green-3">{{ pwMsg }}</p>
+        <ErrorMessage :message="pwError" class="mt-2" />
       </section>
 
       <section class="rounded-lg border border-outline-gray-2 p-4">
@@ -221,9 +263,11 @@ const resolvedCount = ref(0);
  * bhejta hai, aur badlav TABHI hota hai jab user us link par click kare.
  * Isliye yahan turant kuch nahi badalta.
  *
- * profiles.email database ke trigger se apne aap mil jaata hai
- * (19_email_change.sql), warna login naye email se hota aur app purana
- * dikhata rehta.
+ * Purana email teen jagah pada hota hai: auth.users (login), profiles
+ * (app me dikhne wala) aur tickets.raised_by_email (jawab kis pate par
+ * jaayein). Teeno 23_email_and_password.sql ke apply_email_change() se
+ * ek saath badalte hain — pehle sirf pehla badalta tha aur baaki do
+ * peechhe reh jaate the.
  */
 async function changeEmail() {
   const next = newEmail.value.trim().toLowerCase();
@@ -232,13 +276,79 @@ async function changeEmail() {
   emailError.value = "";
   emailMsg.value = "";
   try {
-    const { error: e } = await supabase.auth.updateUser({ email: next });
+    const { error: e } = await supabase.auth.updateUser(
+      { email: next },
+      // Bina iske Supabase apni "Site URL" par bhejta hai, jo default me
+      // localhost hoti hai. Tab link kaam to kar jaata hai, par user ek
+      // khaali safed page par girta hai aur samajhta hai link toota hai.
+      { emailRedirectTo: `${window.location.origin}/auth/callback` }
+    );
     if (e) throw e;
-    emailMsg.value = `Confirmation link sent to ${next}. Your login email changes once you click it.`;
+    emailMsg.value =
+      `Confirmation link sent to ${next}. Open it to finish. ` +
+      `If a link also arrives at your current address, open that one too.`;
   } catch (e: any) {
     emailError.value = e?.message || "Could not start the email change";
   } finally {
     changingEmail.value = false;
+  }
+}
+
+// -------------------------------------------------------------- password
+const pw = reactive({ current: "", next: "", confirm: "" });
+const changingPw = ref(false);
+const pwMsg = ref("");
+const pwError = ref("");
+
+async function changePassword() {
+  pwError.value = "";
+  pwMsg.value = "";
+
+  if (pw.next.length < 8) {
+    pwError.value = "The new password must be at least 8 characters";
+    return;
+  }
+  if (pw.next !== pw.confirm) {
+    pwError.value = "The two new passwords do not match";
+    return;
+  }
+  if (pw.next === pw.current) {
+    pwError.value = "The new password is the same as the current one";
+    return;
+  }
+
+  const email = auth.session?.user.email;
+  if (!email) {
+    pwError.value = "You are not signed in";
+    return;
+  }
+
+  changingPw.value = true;
+  try {
+    // Purana password poochhna zaroori hai. Supabase khud nahi maangta —
+    // uske liye session hi kaafi hai. Yani khuli hui screen chhod dene
+    // par guzarne wala koi bhi password badal kar account le ja sakta
+    // hai. Isliye pehle usi password se ek baar login karke tasalli.
+    const { error: wrong } = await supabase.auth.signInWithPassword({
+      email,
+      password: pw.current,
+    });
+    if (wrong) {
+      pwError.value = "Your current password is not right";
+      return;
+    }
+
+    const { error: e } = await supabase.auth.updateUser({ password: pw.next });
+    if (e) throw e;
+
+    pw.current = "";
+    pw.next = "";
+    pw.confirm = "";
+    pwMsg.value = "Password changed. Use the new one the next time you sign in.";
+  } catch (e: any) {
+    pwError.value = e?.message || "Could not change the password";
+  } finally {
+    changingPw.value = false;
   }
 }
 

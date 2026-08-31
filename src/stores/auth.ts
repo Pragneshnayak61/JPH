@@ -61,6 +61,22 @@ export const useAuthStore = defineStore("auth", () => {
       .single();
     profile.value = (p as Profile) ?? null;
 
+    // profiles.email hamari apni copy hai; LOGIN auth.users se hota hai.
+    // Email badalne par pehle sirf auth.users badalta tha aur ye copy
+    // peechhe reh jaati thi — app purana email dikhati rehti thi, aur
+    // usi purane email se login karne par account hi kho gaya lagta tha.
+    //
+    // Isliye har baar milaan: farq dikhe to database me hi theek kar do
+    // (tickets ka email bhi wahin badal jaata hai).
+    const liveEmail = session.value.user.email;
+    if (profile.value && liveEmail && profile.value.email !== liveEmail) {
+      const { data: synced } = await supabase.rpc("sync_my_email");
+      // Fail ho jaye to bhi screen par sahi email dikhna chahiye — DB
+      // baad me theek ho jaayega, par user ko galat pata nahi dikhna
+      // chahiye.
+      profile.value.email = (synced as string | null) ?? liveEmail;
+    }
+
     if (profile.value?.role_id) {
       const { data: r } = await supabase
         .from("roles")
