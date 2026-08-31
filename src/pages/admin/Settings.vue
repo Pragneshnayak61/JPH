@@ -178,6 +178,13 @@
               >
                 {{ c.is_active ? "Hide" : "Show" }}
               </button>
+              <button
+                class="text-p-sm text-ink-red-3 underline hover:text-ink-red-4"
+                :disabled="savingCat === c.id"
+                @click="askDeleteCategory(c)"
+              >
+                Delete
+              </button>
             </div>
           </div>
 
@@ -194,7 +201,7 @@
           </div>
           <p class="mt-2 text-p-sm text-ink-gray-5">
             Hiding a category keeps it on old tickets but removes it from the
-            form.
+            form. Deleting removes it everywhere.
           </p>
           <ErrorMessage :message="catError" class="mt-2" />
         </section>
@@ -292,6 +299,65 @@
         </p>
       </div>
     </div>
+
+    <!-- Delete category confirm -->
+    <Dialog
+      v-model="showCatDelete"
+      :options="{ title: 'Delete this category?', size: 'sm' }"
+    >
+      <template #body-content>
+        <p class="text-p-base text-ink-gray-7">
+          <strong>{{ catToDelete?.name }}</strong> will be removed from the
+          support form.
+        </p>
+
+        <div v-if="countingCat" class="mt-3 flex items-center gap-2">
+          <LoadingIndicator class="h-4 w-4 text-ink-gray-5" />
+          <span class="text-p-sm text-ink-gray-6">Checking tickets&hellip;</span>
+        </div>
+
+        <!-- Ginti pehle dikhani zaroori hai. "5 tickets isse judi hain"
+             padhkar aadmi ruk jaata hai; bina ginti ke wahi click aankh
+             band karke ho jaata hai. -->
+        <p
+          v-else-if="catUsage > 0"
+          class="mt-3 rounded-md bg-surface-amber-1 px-3 py-2 text-p-sm text-ink-gray-7"
+        >
+          <strong>{{ catUsage }}</strong>
+          {{ catUsage === 1 ? "ticket uses" : "tickets use" }} this category.
+          Those tickets stay, but their category becomes empty and cannot be
+          brought back. To keep it on them, use <strong>Hide</strong> instead.
+        </p>
+        <p v-else class="mt-3 text-p-sm text-ink-gray-5">
+          No ticket uses this category, so nothing else changes.
+        </p>
+
+        <ErrorMessage :message="catDeleteError" class="mt-3" />
+      </template>
+      <template #actions>
+        <div class="flex gap-2">
+          <Button class="flex-1" @click="showCatDelete = false">Cancel</Button>
+          <Button
+            v-if="catUsage > 0"
+            class="flex-1"
+            :loading="deletingCat"
+            @click="hideInstead"
+          >
+            Hide
+          </Button>
+          <Button
+            class="flex-1"
+            theme="red"
+            variant="solid"
+            :loading="deletingCat"
+            :disabled="countingCat"
+            @click="doDeleteCategory"
+          >
+            Delete
+          </Button>
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -299,7 +365,7 @@
 import { supabase } from "@/lib/supabase";
 import { useSettingsStore, type SiteSettings } from "@/stores/settings";
 import {
-  Button, ErrorMessage, FormControl, FormLabel, LoadingIndicator,
+  Button, Dialog, ErrorMessage, FormControl, FormLabel, LoadingIndicator,
 } from "frappe-ui";
 import { onMounted, ref } from "vue";
 
@@ -369,15 +435,86 @@ async function renameCategory(c: Category, name: string) {
 
 async function toggleCategory(c: Category) {
   savingCat.value = c.id;
-  // Delete jaan-boojh kar nahi diya. Category hataane par purane tickets
-  // ka category_id null ho jaata aur wo jaankari hamesha ke liye chali
-  // jaati. Hide karne se form se hat jaati hai, record bacha rehta hai.
+  // Hide = form se hat jaati hai, par purane tickets par bani rehti hai.
+  // Isiliye ye delete se pehle wala, surakshit raasta hai.
   const { error } = await supabase
     .from("ticket_categories")
     .update({ is_active: !c.is_active })
     .eq("id", c.id);
   savingCat.value = null;
   if (error) catError.value = error.message;
+  await loadCategories();
+}
+
+// -------------------------------------------------------- delete category
+//
+// tickets.category_id par FK "on delete set null" hai — category mitte hi
+// un tickets ka category khaali ho jaata hai, aur wapas nahi aata. Isliye
+// pehle ginti dikhate hain aur saath me Hide ka rasta bhi dete hain.
+const showCatDelete = ref(false);
+const catToDelete = ref<Category | null>(null);
+const catUsage = ref(0);
+const countingCat = ref(false);
+const deletingCat = ref(false);
+const catDeleteError = ref("");
+
+async function askDeleteCategory(c: Category) {
+  catToDelete.value = c;
+  catDeleteError.value = "";
+  catUsage.value = 0;
+  showCatDelete.value = true;
+
+  // head: true — sirf ginti chahiye, rows nahi. Poore tickets kheenchna
+  // bekaar hai jab dikhana sirf ek number hai.
+  countingCat.value = true;
+  const { count, error } = await supabase
+    .from("tickets")
+    .select("id", { count: "exact", head: true })
+    .eq("category_id", c.id);
+  countingCat.value = false;
+
+  if (error) {
+    // Ginti na mile to delete rokte nahi, par aadmi ko bata dete hain ki
+    // wo bina ginti dekhe faisla kar raha hai.
+    catDeleteError.value = "Could not check how many tickets use this: " + error.message;
+    return;
+  }
+  catUsage.value = count ?? 0;
+}
+
+async function hideInstead() {
+  const c = catToDelete.value;
+  if (!c) return;
+  deletingCat.value = true;
+  catDeleteError.value = "";
+  const { error } = await supabase
+    .from("ticket_categories")
+    .update({ is_active: false })
+    .eq("id", c.id);
+  deletingCat.value = false;
+  if (error) {
+    catDeleteError.value = error.message;
+    return;
+  }
+  showCatDelete.value = false;
+  await loadCategories();
+}
+
+async function doDeleteCategory() {
+  const c = catToDelete.value;
+  if (!c) return;
+  deletingCat.value = true;
+  catDeleteError.value = "";
+  const { error } = await supabase
+    .from("ticket_categories")
+    .delete()
+    .eq("id", c.id);
+  deletingCat.value = false;
+  if (error) {
+    catDeleteError.value = error.message;
+    return;
+  }
+  showCatDelete.value = false;
   await loadCategories();
 }
 
