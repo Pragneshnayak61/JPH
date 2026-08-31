@@ -71,10 +71,12 @@
           >
             <td class="px-4 py-2.5">
               <div class="flex min-w-0 items-center gap-2">
-                <Avatar :label="p.full_name || p.email" size="sm" />
+                <Avatar :label="personLabel(p)" size="sm" />
                 <div class="min-w-0">
-                  <p class="truncate text-ink-gray-8">{{ p.full_name || "—" }}</p>
-                  <p class="truncate text-p-sm text-ink-gray-5">{{ p.email }}</p>
+                  <p class="truncate text-ink-gray-8">{{ personLabel(p) }}</p>
+                  <p class="truncate text-p-sm text-ink-gray-5">
+                    {{ p.email || kindLabel(p.kind) }}
+                  </p>
                 </div>
               </div>
             </td>
@@ -148,10 +150,11 @@
     <ErrorMessage :message="saveError" class="mt-3" />
 
     <p class="mt-2 text-p-sm text-ink-gray-5">
-      Agents see each other by <strong>ID and specialization only</strong>
-      &mdash; never by name or email. Specialization is what tells them who to
-      pass a ticket to, so keep it short and useful ("Network", "Billing").
-      Leave the ID blank and one is generated.
+      Everyone &mdash; administrators included &mdash; sees other people by
+      <strong>ID and specialization only</strong>, never by name or email.
+      Specialization is what tells an agent who to pass a ticket to, so keep it
+      short and useful ("Network", "Billing"). Leave the ID blank and one is
+      generated. People with no ID show a short reference instead.
     </p>
     <p class="mt-1 text-p-sm text-ink-gray-5">
       You cannot change your own access or disable yourself &mdash; that would
@@ -174,8 +177,8 @@
         />
       </button>
       <p class="mt-0.5 text-p-base text-ink-gray-6">
-        These people can no longer sign in. Kept so you can still tell who
-        an old ID belonged to.
+        These people can no longer sign in. Kept so an old ID on a ticket
+        still means something.
       </p>
 
       <div
@@ -195,8 +198,12 @@
           <tbody>
             <tr v-for="d in deleted" :key="d.id" class="border-t border-outline-gray-2">
               <td class="px-4 py-2.5">
-                <p class="text-ink-gray-8">{{ d.full_name || "—" }}</p>
-                <p class="text-p-sm text-ink-gray-5">{{ d.email }}</p>
+                <p class="text-ink-gray-8">
+                  {{ personLabel(d) }}
+                </p>
+                <p class="text-p-sm text-ink-gray-5">
+                  {{ d.email || kindLabel(d.kind) }}
+                </p>
               </td>
               <td class="px-3 py-2.5 text-ink-gray-7">
                 {{ d.agent_code || "—" }}
@@ -282,11 +289,11 @@
     >
       <template #body-content>
         <p class="text-p-base text-ink-gray-7">
-          <strong>{{ toDelete?.full_name || toDelete?.email }}</strong> will be
+          <strong>{{ toDelete ? personLabel(toDelete) : "" }}</strong> will be
           removed completely. They will not be able to sign in again.
         </p>
         <p class="mt-2 text-p-sm text-ink-gray-5">
-          Their tickets stay, but their name disappears from them &mdash; you
+          Their tickets stay, but their ID disappears from them &mdash; you
           will no longer be able to tell who handled what. If you only want to
           stop their access, use <strong>Disable</strong> instead; that keeps
           the history.
@@ -397,8 +404,16 @@ import { computed, onMounted, reactive, ref } from "vue";
 
 const auth = useAuthStore();
 
+/**
+ * email aur full_name null aate hain.
+ *
+ * Ab pehchaan sabse chhupi hai — admin se bhi (24_hide_identity.sql).
+ * Server in dono ki jagah null bhejta hai, isliye type me `| null` hai.
+ * Switch wapas chalu karne par yahi jagah phir se bhar jaati hai aur
+ * page apne aap naam dikhane lagta hai — koi code badalna nahi padta.
+ */
 type Person = {
-  id: string; email: string; full_name: string | null;
+  id: string; email: string | null; full_name: string | null;
   kind: "admin" | "agent" | "customer";
   role_id: string | null; is_active: boolean;
   agent_code: string | null; specialization: string | null;
@@ -428,7 +443,8 @@ const savingRole = ref<string | null>(null);
 const showHelp = ref(false);
 const lastCreated = ref("");
 type DeletedAccount = {
-  id: string; email: string; full_name: string | null;
+  id: string; email: string | null; full_name: string | null;
+  kind: string | null;
   agent_code: string | null; specialization: string | null;
   resolved_count: number; deleted_at: string; deleted_by_label: string | null;
 };
@@ -441,14 +457,33 @@ function formatDate(s: string) {
   });
 }
 
+/**
+ * Jiski koi ID nahi (customer), use kis naam se pukarein.
+ *
+ * Naam aur email ab dikhte nahi, aur ID sirf staff ko milti hai. Bina
+ * kisi handle ke poori list ek jaisi "—" ban jaati aur admin kisi ko
+ * promote bhi nahi kar paata. Isliye uski profile id ka pehla tukda —
+ * ye pehchaan nahi, sirf ek pakad hai, aur har baar wahi rehta hai.
+ */
+function shortRef(id: string) {
+  return "#" + id.slice(0, 8);
+}
+
+function kindLabel(kind: string | null) {
+  if (kind === "admin") return "Administrator";
+  if (kind === "agent") return "Agent";
+  return "Customer";
+}
+
+function personLabel(p: Person | DeletedAccount) {
+  return p.full_name || p.email || p.agent_code || shortRef(p.id);
+}
+
 async function loadDeleted() {
-  // Sirf admin padh sakta hai (RLS). Agent ke liye ye chup-chaap khali
-  // aayega, koi error nahi — aur section dikhega hi nahi.
-  const { data } = await supabase
-    .from("deleted_accounts")
-    .select("*")
-    .order("deleted_at", { ascending: false });
-  deleted.value = data ?? [];
+  // Sirf admin ko milta hai — function khud check karta hai. Agent ke
+  // liye ye chup-chaap khali aayega aur section dikhega hi nahi.
+  const { data } = await supabase.rpc("deleted_accounts_list");
+  deleted.value = (data as DeletedAccount[]) ?? [];
 }
 
 const showDelete = ref(false);
@@ -502,12 +537,11 @@ const roleOptions = computed(() => [
 
 async function load() {
   try {
+    // profiles se seedha nahi — RLS ab kisi ko doosri profile padhne
+    // nahi deti, apni bhi sirf. staff_admin_list() wahi cheezein deta
+    // hai jo managing ke liye chahiye, pehchaan ke bagair.
     const [{ data: p, error: e1 }, { data: r, error: e2 }] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, email, full_name, kind, role_id, is_active, agent_code, specialization")
-        .order("kind")
-        .order("email"),
+      supabase.rpc("staff_admin_list"),
       supabase.from("roles").select("*").order("name"),
     ]);
     if (e1) throw e1;

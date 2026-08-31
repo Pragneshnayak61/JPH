@@ -554,9 +554,11 @@ function bulkStatus(v: string) {
  *   3. Na naam, na creator -> jo email ticket par pada hai
  *
  * Doosri soorat me pehchaan ka wahi niyam lagta hai jo poore app me hai:
- * admin ko email, baaki sabko sirf ID. Email server se hi tabhi aata
- * hai jab dekhne wala admin ho (staff_directory me), isliye yahan
- * chhupane ki zaroorat nahi — jo hai hi nahi wo dikhega kaise.
+ * sabko sirf ID — admin ko bhi (24_hide_identity.sql). Email server se
+ * aata hi nahi (staff_directory usme null bhejta hai), isliye yahan
+ * chhupane ki zaroorat nahi — jo hai hi nahi wo dikhega kaise. Niyam
+ * badla to `s.email` apne aap bharne lagega aur ye line waise ki waisi
+ * kaam karti rahegi.
  */
 function fromLabel(t: Ticket) {
   if (t.contact_name) return t.contact_name;

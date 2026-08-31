@@ -58,6 +58,15 @@ select '23 — email fix + sync_my_email',
                  and f.proname in ('sync_my_email', 'apply_email_change')
                having count(*) = 2)
             then 'ho gaya' else 'BAAKI HAI' end
+union all
+select '24 — pehchaan sabse chhupi',
+       case when exists (
+              select 1
+                from pg_proc f
+                join pg_namespace n on n.oid = f.pronamespace
+               where n.nspname = 'public'
+                 and f.proname = 'identity_visible')
+            then 'ho gaya' else 'BAAKI HAI' end
 order by script;
 
 

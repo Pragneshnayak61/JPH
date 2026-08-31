@@ -460,15 +460,22 @@ const categoryOptions = ref<{ label: string; value: string }[]>([]);
 /**
  * Message par kiska naam dikhana hai.
  *
- * author_name me agent ka ASLI naam save hota hai (customer ko wahi
- * dikhna chahiye). Par yahan agent-facing screen hai, aur ek agent ko
- * doosre ka naam nahi dikhna chahiye — isliye author_id se directory
- * ka label lete hain, jo admin ko naam aur agent ko code deta hai.
- * Customer ke apne reply par author_id null hota hai, wahan naam theek hai.
+ * author_name me agent ka ASLI naam save hota hai — customer ko email me
+ * wahi dikhna chahiye. Par ye staff wali screen hai, aur yahan kisi ko
+ * kisi ki pehchaan nahi dikhni chahiye. Isliye author_id se directory ka
+ * label lete hain, jo sirf ID deta hai.
+ *
+ * author_id hai par directory me nahi mila — matlab wo agent ab disable
+ * ya delete ho chuka hai. Aise me author_name par gir jaana galat hoga:
+ * theek wahi asli naam wapas aa jaata jise chhupa rahe hain. Isliye
+ * wahan ek aam label.
+ *
+ * Customer ke apne reply par author_id null hota hai. Wahan naam dikhana
+ * theek hai — wo ticket ka apna maalik hai, koi staff nahi.
  */
 function messageAuthor(m: Message) {
-  if (m.author_id && staffLabels.value[m.author_id]) {
-    return staffLabels.value[m.author_id];
+  if (m.author_id) {
+    return staffLabels.value[m.author_id] || "Agent";
   }
   return m.author_name || m.author_email || "Customer";
 }
@@ -641,16 +648,18 @@ async function load() {
       });
     }
 
-    const { data: m } = await supabase
-      .from("ticket_messages")
-      .select("id, body, is_internal, author_id, author_name, author_email, created_at")
-      .eq("ticket_id", Number(props.id))
-      .order("created_at");
+    // Seedha table se nahi. Har message par jawab dene wale agent ka
+    // asli naam aur email pada hota hai (customer ke mail ke liye), aur
+    // wo sab browser me utar aata tha. Function customer ka naam to
+    // deta hai — wo dikhna hi chahiye — par staff ka nahi.
+    const { data: m } = await supabase.rpc("ticket_messages_list", {
+      p_ticket_id: Number(props.id),
+    });
     messages.value = (m as Message[]) ?? [];
 
-    // profiles se seedha nahi padh sakte — ab RLS sirf apni profile aur
-    // admin ko sab deti hai. staff_directory() agent ko sirf "Agent 1"
-    // jaisa code deta hai, admin ko asli naam.
+    // profiles se seedha nahi padh sakte — RLS ab sirf apni profile
+    // padhne deti hai. staff_directory() sabko sirf "Agent 1" jaisi ID
+    // deta hai.
     const { data: cats } = await supabase
       .from("ticket_categories")
       .select("id, name")
