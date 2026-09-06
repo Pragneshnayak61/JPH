@@ -90,8 +90,10 @@ na chali ho to code phir bhi jaata hai, bas ye message nahi aata.
 
 Ek baar ka setup, warna email me code nahi jaayega:
 
-1. **Authentication -> Emails -> "Reset Password"** template me
-   `{{ .Token }}` daaliye. Default template me sirf link hota hai.
+1. **Authentication -> Emails -> Templates -> "Reset Password"** ke
+   Message body me `supabase/email_templates/reset_password.html` paste
+   kijiye. Default template me `{{ .Token }}` hota hi nahi, sirf link —
+   isi wajah se code email me nahi jaata.
    *(Link bhi chalta rehta hai — wo `/forgot-password` par girta hai aur
    seedha "naya password" wale step par le jaata hai.)*
 2. **Authentication -> URL Configuration -> Redirect URLs** me site ka
