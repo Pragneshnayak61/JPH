@@ -371,7 +371,9 @@ begin
 
   -- Ek-ek karke isliye ki ops_complete() me auto-ticket ka faisla bhi
   -- lagta hai. Seedha ek UPDATE likhne par wo chhoot jaata.
-  foreach v_id in array coalesce(p_ids, '{}')
+  -- '{}' par cast zaroori hai — bina type ke Postgres ye tay nahi kar
+  -- pata ki ye kis cheez ka array hai.
+  foreach v_id in array coalesce(p_ids, '{}'::bigint[])
   loop
     perform public.ops_complete(v_id, p_status, null);
     v_count := v_count + 1;
@@ -574,5 +576,30 @@ select proname
  where n.nspname = 'public' and proname like 'ops\_%'
  order by proname;
 
--- Aaj ki list (abhi khali aayegi — generator 30 wali script me hai):
-select * from public.ops_today();
+-- ops_today() YAHAN SE NAHI CHALEGI, aur ye theek hai.
+--
+-- SQL Editor ki query `postgres` ke naam se chalti hai, kisi logged-in
+-- user ke naam se nahi. Wahan auth.uid() null hota hai, isliye
+-- ops_can_read() false deta hai aur function "Not allowed" phenk deta
+-- hai. Yani rok theek kaam kar rahi hai.
+--
+-- Aur Supabase poori script ek transaction me chalata hai — is ek line
+-- ke fail hone par upar bane hue saare function bhi wapas ho jaate hain.
+-- Isliye ise sirf comment me rakha hai:
+--
+--   select * from public.ops_today();
+--
+-- Sahi jagah se test kijiye: app me login kar ke Operations page se
+-- (Phase 5). Ya SQL Editor me chalana hi ho to pehle apne aap ko banna
+-- padega, jo yahan karne layak nahi.
+
+-- Kis function ko kaun chala sakta hai:
+select p.proname,
+       array_agg(distinct a.rolname order by a.rolname) as kaun_chala_sakta_hai
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  left join aclexplode(p.proacl) ax on true
+  left join pg_roles a on a.oid = ax.grantee
+ where n.nspname = 'public' and p.proname like 'ops\_%'
+ group by p.proname
+ order by p.proname;

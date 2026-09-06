@@ -145,10 +145,19 @@ select public.ops_generate_due() as abhi_kitni_rows_bani;
 
 -- ---------------------------------------------------------------- check
 
--- Cron laga ya nahi (khali aaye to matlab pg_cron off hai):
-select jobname, schedule, active
-  from cron.job
- where jobname = 'ops-generate-daily';
+-- Cron laga ya nahi.
+--
+-- Ye JAAN-BOOJH KAR comment me hai. pg_cron enable na ho to `cron` schema
+-- hota hi nahi, aur Postgres query ko PADHTE waqt hi error de deta hai —
+-- jisse poori script (ek transaction me chalti hai) wapas ho jaati.
+-- pg_cron on karne ke baad ise alag se chala lijiye:
+--
+--   select jobname, schedule, active from cron.job
+--    where jobname = 'ops-generate-daily';
+
+-- Extension on hai ya nahi, ye bina khatre ke poochha ja sakta hai:
+select exists (select 1 from pg_extension where extname = 'pg_cron')
+         as pg_cron_on_hai;
 
 -- Kis din kitni jaanchein bani hain:
 select due_date, count(*) as kitni
