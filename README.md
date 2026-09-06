@@ -84,6 +84,10 @@ Login page par **Forgot password?** hai. Wo email par 6-digit code bhejta
 hai, code sahi hone par naya password lag jaata hai. Poora kaam Supabase
 Auth karta hai — na koi OTP table, na service_role.
 
+Galat email daalne par code bhejta hi nahi — seedha "No account uses this
+email" keh deta hai. Iske liye `25_account_exists.sql` chalni chahiye;
+na chali ho to code phir bhi jaata hai, bas ye message nahi aata.
+
 Ek baar ka setup, warna email me code nahi jaayega:
 
 1. **Authentication -> Emails -> "Reset Password"** template me

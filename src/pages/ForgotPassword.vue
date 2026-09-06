@@ -29,9 +29,28 @@
             @keyup.enter="sendCode"
           />
           <p class="text-p-sm text-ink-gray-5">
-            Use the address you sign in with. If an account exists for it, a
-            6-digit code arrives in a minute or two.
+            Use the address you sign in with. The 6-digit code arrives in a
+            minute or two.
           </p>
+
+          <div
+            v-if="notFound"
+            class="flex gap-2 rounded-lg border border-outline-red-2 bg-surface-red-2 p-3"
+          >
+            <FeatherIcon
+              name="alert-circle"
+              class="mt-0.5 h-4 w-4 shrink-0 text-ink-red-3"
+            />
+            <div class="text-p-sm">
+              <p class="font-medium text-ink-red-4">
+                No account uses this email
+              </p>
+              <p class="mt-0.5 text-ink-gray-7">
+                Nothing was sent. Check the spelling, or ask an administrator
+                to create an account for you.
+              </p>
+            </div>
+          </div>
 
           <ErrorMessage :message="error" />
 
@@ -158,17 +177,23 @@
  * pakadta hai aur seedha teesre step par le jaata hai. Isliye template
  * badalne se pehle bhi ye page bekaar nahi hai.
  *
- * KYA JAAN-BOOJH KAR NAHI KIYA
+ * GALAT EMAIL PAR SAAF MANA
  *
- * "Is email ka account nahi hai" kabhi nahi batate. Wo bata dena kisi
- * ajnabi ko ye ginne ka mauka de deta hai ki kaun-kaun yahan hai.
- * Supabase bhi isi wajah se success/failure me farq nahi karta.
+ * Code bhejne se pehle account_exists() se poochha jaata hai ki is pate
+ * ka account hai bhi ya nahi (25_account_exists.sql). Nahi hai to code
+ * bhejte hi nahi aur seedha bata dete hain.
+ *
+ * Supabase khud ye farq jaan-boojh kar nahi batata — usse koi ajnabi
+ * ek-ek pata daal kar ye ginn sakta hai ki yahan kaun-kaun hai. Yahan wo
+ * chhoot maang kar li gayi hai, aur andar ke helpdesk par wajib hai:
+ * account admin banata hai, sign-up khula nahi hai. Wajah aur usse jo
+ * milta-nahi-milta, dono 25_account_exists.sql ke sar par likhe hain.
  */
 import SiteFooter from "@/components/SiteFooter.vue";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/auth";
 import { useSettingsStore } from "@/stores/settings";
-import { Button, ErrorMessage, FormControl } from "frappe-ui";
+import { Button, ErrorMessage, FeatherIcon, FormControl } from "frappe-ui";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
@@ -185,6 +210,15 @@ const password = ref("");
 const confirm = ref("");
 const busy = ref(false);
 const error = ref("");
+// Jis pate par "account nahi hai" nikla tha. Ise yaad rakhna zaroori hai:
+// laal dabba tabhi tak dikhna chahiye jab tak WAHI pata likha ho. User ne
+// spelling theek ki nahi ki wo apne aap hat jaata hai.
+const notFoundEmail = ref("");
+const notFound = computed(
+  () =>
+    notFoundEmail.value !== "" &&
+    email.value.trim().toLowerCase() === notFoundEmail.value
+);
 
 // Resend par thodi rok. Supabase ki apni rate limit is se kahin sakht hai
 // (custom SMTP ke bina ghante me 2 email); baar-baar dabane par user wo
@@ -285,7 +319,25 @@ async function sendCode() {
 
   busy.value = true;
   error.value = "";
+  notFoundEmail.value = "";
   try {
+    // Pehle poochho, phir bhejo.
+    //
+    // Lookup KHUD fail ho jaaye (25 wali script na chali ho, ya network
+    // beech me tootey) to raasta rokte nahi — code bhej dete hain. Ek
+    // chhoti si check ke fail hone par poora password reset band kar
+    // dena us bande ko bahar khada chhod dega jiska account sach me
+    // hai. Us soorat me sirf "account nahi hai" wala message nahi aata.
+    const { data: exists, error: lookupFailed } = await supabase.rpc(
+      "account_exists",
+      { p_email: to }
+    );
+    if (!lookupFailed && exists === false) {
+      email.value = to;
+      notFoundEmail.value = to;
+      return;
+    }
+
     const { error: e } = await supabase.auth.resetPasswordForEmail(to, {
       // Sirf un logon ke liye jo code ke bajaye link dabate hain. Wo link
       // isi page par girta hai aur upar wala handleRecoveryLink() use
@@ -372,6 +424,7 @@ async function savePassword() {
 function backToEmail() {
   code.value = "";
   error.value = "";
+  notFoundEmail.value = "";
   step.value = "email";
 }
 

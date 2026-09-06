@@ -67,6 +67,13 @@ select '24 — pehchaan sabse chhupi',
                where n.nspname = 'public'
                  and f.proname = 'identity_visible')
             then 'ho gaya' else 'BAAKI HAI' end
+union all
+select '25 — account_exists (forgot password)',
+       case when exists (
+              select 1 from pg_proc f
+                join pg_namespace n on n.oid = f.pronamespace
+               where n.nspname = 'public' and f.proname = 'account_exists')
+            then 'ho gaya' else 'BAAKI HAI' end
 order by script;
 
 
