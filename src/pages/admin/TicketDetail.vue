@@ -4,7 +4,7 @@
   </div>
 
   <div v-else-if="error" class="p-6">
-    <p class="text-p-base text-ink-red-3">{{ error }}</p>
+    <p class="text-p-base text-ink-red-7">{{ error }}</p>
     <Button variant="subtle" class="mt-3" @click="router.push('/admin')">
       Back to dashboard
     </Button>
@@ -106,7 +106,7 @@
         >
           <FeatherIcon
             name="alert-triangle"
-            class="mt-0.5 h-4 w-4 shrink-0 text-ink-amber-3"
+            class="mt-0.5 h-4 w-4 shrink-0 text-ink-amber-9"
           />
           <p class="text-p-sm text-ink-gray-7">
             This ticket has no customer email, so nothing will be emailed.
@@ -172,7 +172,7 @@
         <ErrorMessage :message="replyError" class="mt-2" />
         <p
           v-if="emailSent === false"
-          class="mt-2 text-p-sm text-ink-amber-3"
+          class="mt-2 text-p-sm text-ink-amber-9"
         >
           Reply saved, but the email could not be sent. Check the email
           settings.
@@ -192,7 +192,7 @@
       <div>
         <FormLabel label="Due date" />
         <FormControl v-model="edit.due_date" type="date" />
-        <p v-if="isOverdue" class="mt-1 text-p-sm font-medium text-ink-red-3">
+        <p v-if="isOverdue" class="mt-1 text-p-sm font-medium text-ink-red-7">
           Overdue
         </p>
       </div>
@@ -236,12 +236,12 @@
           <span class="text-ink-gray-5">Saving...</span>
         </template>
         <template v-else-if="saveError">
-          <FeatherIcon name="alert-circle" class="h-3.5 w-3.5 text-ink-red-3" />
-          <span class="text-ink-red-3">Not saved</span>
+          <FeatherIcon name="alert-circle" class="h-3.5 w-3.5 text-ink-red-7" />
+          <span class="text-ink-red-7">Not saved</span>
         </template>
         <template v-else-if="justSaved">
-          <FeatherIcon name="check" class="h-3.5 w-3.5 text-ink-green-3" />
-          <span class="text-ink-green-3">Saved</span>
+          <FeatherIcon name="check" class="h-3.5 w-3.5 text-ink-green-8" />
+          <span class="text-ink-green-8">Saved</span>
         </template>
       </div>
 
@@ -299,7 +299,7 @@
         class="border-t border-outline-gray-2 pt-4"
       >
         <button
-          class="text-p-sm text-ink-red-3 underline hover:text-ink-red-4"
+          class="text-p-sm text-ink-red-7 underline hover:text-ink-red-9"
           @click="showDelete = true"
         >
           Delete this ticket

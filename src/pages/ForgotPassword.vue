@@ -39,10 +39,10 @@
           >
             <FeatherIcon
               name="alert-circle"
-              class="mt-0.5 h-4 w-4 shrink-0 text-ink-red-3"
+              class="mt-0.5 h-4 w-4 shrink-0 text-ink-red-7"
             />
             <div class="text-p-sm">
-              <p class="font-medium text-ink-red-4">
+              <p class="font-medium text-ink-red-9">
                 No account uses this email
               </p>
               <p class="mt-0.5 text-ink-gray-7">

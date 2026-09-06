@@ -9,7 +9,7 @@
       <div
         class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-surface-green-2"
       >
-        <FeatherIcon name="check" class="h-6 w-6 text-ink-green-3" />
+        <FeatherIcon name="check" class="h-6 w-6 text-ink-green-8" />
       </div>
 
       <h1 class="text-lg font-semibold text-ink-gray-9">{{ s.thanks_title }}</h1>

@@ -40,7 +40,7 @@
     </div>
 
     <div v-else-if="error" class="py-16 text-center">
-      <p class="text-p-base text-ink-red-3">{{ error }}</p>
+      <p class="text-p-base text-ink-red-7">{{ error }}</p>
     </div>
 
     <!-- Refetch par poora page khali nahi karte. Skeleton flash me

@@ -43,7 +43,7 @@
           >
             Send confirmation link
           </Button>
-          <p v-if="emailMsg" class="mt-2 text-p-sm text-ink-green-3">
+          <p v-if="emailMsg" class="mt-2 text-p-sm text-ink-green-8">
             {{ emailMsg }}
           </p>
           <ErrorMessage :message="emailError" class="mt-2" />
@@ -91,7 +91,7 @@
         <Button class="mt-3" :loading="changingPw" @click="changePassword">
           Change password
         </Button>
-        <p v-if="pwMsg" class="mt-2 text-p-sm text-ink-green-3">{{ pwMsg }}</p>
+        <p v-if="pwMsg" class="mt-2 text-p-sm text-ink-green-8">{{ pwMsg }}</p>
         <ErrorMessage :message="pwError" class="mt-2" />
       </section>
 
@@ -162,7 +162,7 @@
         <Button variant="solid" :loading="saving" @click="save">
           Save changes
         </Button>
-        <span v-if="saved" class="text-p-sm text-ink-green-3">Saved</span>
+        <span v-if="saved" class="text-p-sm text-ink-green-8">Saved</span>
       </div>
       <ErrorMessage :message="error" />
       </div>

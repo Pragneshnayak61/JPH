@@ -179,7 +179,7 @@
                 {{ c.is_active ? "Hide" : "Show" }}
               </button>
               <button
-                class="text-p-sm text-ink-red-3 underline hover:text-ink-red-4"
+                class="text-p-sm text-ink-red-7 underline hover:text-ink-red-9"
                 :disabled="savingCat === c.id"
                 @click="askDeleteCategory(c)"
               >
@@ -213,7 +213,7 @@
           <Button variant="subtle" :disabled="saving" @click="reset">
             Discard
           </Button>
-          <span v-if="savedAt" class="text-p-sm text-ink-green-3">Saved</span>
+          <span v-if="savedAt" class="text-p-sm text-ink-green-8">Saved</span>
         </div>
         <ErrorMessage :message="saveError" />
       </div>

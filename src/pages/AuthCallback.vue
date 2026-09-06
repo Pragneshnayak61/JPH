@@ -13,7 +13,7 @@
           <div
             class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-surface-green-2"
           >
-            <FeatherIcon name="check" class="h-6 w-6 text-ink-green-3" />
+            <FeatherIcon name="check" class="h-6 w-6 text-ink-green-8" />
           </div>
           <h1 class="text-lg font-semibold text-ink-gray-9">Email confirmed</h1>
           <p class="mt-2 text-p-base text-ink-gray-6">
@@ -34,7 +34,7 @@
           <div
             class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-surface-red-2"
           >
-            <FeatherIcon name="alert-circle" class="h-6 w-6 text-ink-red-3" />
+            <FeatherIcon name="alert-circle" class="h-6 w-6 text-ink-red-7" />
           </div>
           <h1 class="text-lg font-semibold text-ink-gray-9">
             This link did not work

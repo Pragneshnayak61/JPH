@@ -136,7 +136,7 @@
             </td>
           </tr>
           <tr v-else-if="error">
-            <td colspan="9" class="px-4 py-10 text-center text-ink-red-3">
+            <td colspan="9" class="px-4 py-10 text-center text-ink-red-7">
               {{ error }}
             </td>
           </tr>
@@ -240,7 +240,7 @@
               <span
                 v-if="t.due_date"
                 class="text-p-sm"
-                :class="isOverdue(t) ? 'font-medium text-ink-red-3' : 'text-ink-gray-6'"
+                :class="isOverdue(t) ? 'font-medium text-ink-red-7' : 'text-ink-gray-6'"
               >
                 {{ formatDue(t.due_date) }}
               </span>

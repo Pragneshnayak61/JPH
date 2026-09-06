@@ -41,7 +41,7 @@
           </RouterLink>
         </div>
 
-        <p v-if="justReset" class="text-p-sm text-ink-green-3">
+        <p v-if="justReset" class="text-p-sm text-ink-green-8">
           Password changed. Sign in with the new one.
         </p>
 

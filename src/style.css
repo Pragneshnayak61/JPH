@@ -12,6 +12,22 @@
    ka formatting (bold, list, quote) bina style ke dikhta hai. */
 @import "frappe-ui/editor-style.css";
 
+/* RANG KE NUMBER — ink-red-7 kyun, ink-red-3 kyun nahi
+   ------------------------------------------------------------------
+   frappe-ui ke ink-* paimane par light mode me CHHOTA number = HALKA
+   rang. text-ink-red-3 oklch(91.5%) hai — safed background par wo
+   lagbhag dikhta hi nahi. Pehle poore app me error, "Saved" aur
+   overdue ke nishaan inhi halke number par lage the aur padhe nahi
+   jaate the.
+
+   Isliye ab: red-7, green-8, amber-9. Ye 47-57% lightness par hain,
+   yani safed par saaf padhne layak.
+
+   Kisi din dark mode aaya to ye ULTA ho jaayega — dark palette me
+   bada number halka rang deta hai. Us waqt in sab par dobara nazar
+   daalni padegi; abhi app sirf light hai (`dark:` kahin use nahi hota).
+*/
+
 html,
 body,
 #app {

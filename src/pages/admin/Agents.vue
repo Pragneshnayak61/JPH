@@ -59,7 +59,7 @@
             </td>
           </tr>
           <tr v-else-if="loadError">
-            <td colspan="6" class="px-4 py-10 text-center text-ink-red-3">
+            <td colspan="6" class="px-4 py-10 text-center text-ink-red-7">
               {{ loadError }}
             </td>
           </tr>
@@ -134,7 +134,7 @@
                 </button>
                 <button
                   v-if="auth.isAdmin && p.id !== auth.profile?.id"
-                  class="text-p-sm text-ink-red-3 underline hover:text-ink-red-4"
+                  class="text-p-sm text-ink-red-7 underline hover:text-ink-red-9"
                   :disabled="saving === p.id"
                   @click="askDelete(p)"
                 >
