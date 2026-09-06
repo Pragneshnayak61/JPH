@@ -32,6 +32,19 @@
           @keyup.enter="signIn"
         />
 
+        <div class="flex justify-end">
+          <RouterLink
+            :to="{ name: 'ForgotPassword', query: email ? { email } : {} }"
+            class="text-p-sm text-ink-gray-6 underline"
+          >
+            Forgot password?
+          </RouterLink>
+        </div>
+
+        <p v-if="justReset" class="text-p-sm text-ink-green-3">
+          Password changed. Sign in with the new one.
+        </p>
+
         <ErrorMessage :message="error" />
 
         <Button
@@ -75,6 +88,10 @@ const email = ref("");
 const password = ref("");
 const loading = ref(false);
 const error = ref("");
+
+// Password reset karke aane wale ko yahin tasalli mil jaani chahiye ki
+// wo ho gaya — warna login screen dobara dikhna "fail ho gaya" lagta hai.
+const justReset = computed(() => route.query.reset === "1");
 
 async function signIn() {
   if (!email.value || !password.value) {

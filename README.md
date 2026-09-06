@@ -78,6 +78,24 @@ Ab us email se `/login` par login kijiye.
 
 ---
 
+## Password bhool jaayein to
+
+Login page par **Forgot password?** hai. Wo email par 6-digit code bhejta
+hai, code sahi hone par naya password lag jaata hai. Poora kaam Supabase
+Auth karta hai — na koi OTP table, na service_role.
+
+Ek baar ka setup, warna email me code nahi jaayega:
+
+1. **Authentication -> Emails -> "Reset Password"** template me
+   `{{ .Token }}` daaliye. Default template me sirf link hota hai.
+   *(Link bhi chalta rehta hai — wo `/forgot-password` par girta hai aur
+   seedha "naya password" wale step par le jaata hai.)*
+2. **Authentication -> URL Configuration -> Redirect URLs** me site ka
+   pata hona chahiye, warna link kahin aur gir jaayega.
+3. **Custom SMTP** lagaiye. Supabase ke apne SMTP par ghante me sirf 2
+   email jaati hain — teen log ek saath password bhool jaayein to teesre
+   ko code milega hi nahi.
+
 ## Suraksha kaise kaam karti hai
 
 Yahan koi backend server nahi hai — browser seedha Supabase se baat karta hai. Isliye **poori suraksha database ke andar** hai (Row Level Security).

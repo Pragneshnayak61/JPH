@@ -53,6 +53,13 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/pages/Login.vue"),
   },
   {
+    // Password bhool jaane par yahi ek raasta bachta hai, isliye bina
+    // login ke khulna hi is page ka poora matlab hai.
+    path: "/forgot-password",
+    name: "ForgotPassword",
+    component: () => import("@/pages/ForgotPassword.vue"),
+  },
+  {
     // Supabase ke confirmation link yahan girte hain. Bina login ke
     // khulna ZAROORI hai: email badalne wala link kabhi doosre browser me
     // bhi khulta hai, jahan session hai hi nahi.
