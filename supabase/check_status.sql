@@ -74,6 +74,15 @@ select '25 — account_exists (forgot password)',
                 join pg_namespace n on n.oid = f.pronamespace
                where n.nspname = 'public' and f.proname = 'account_exists')
             then 'ho gaya' else 'BAAKI HAI' end
+union all
+select '26 — customer email optional',
+       case when exists (
+              select 1 from information_schema.columns
+               where table_schema = 'public'
+                 and table_name   = 'tickets'
+                 and column_name  = 'raised_by_email'
+                 and is_nullable  = 'YES')
+            then 'ho gaya' else 'BAAKI HAI' end
 order by script;
 
 

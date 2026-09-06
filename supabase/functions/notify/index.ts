@@ -267,6 +267,13 @@ Deno.serve(async (req) => {
       .single();
     if (!t) return json({ error: "Ticket not found" }, 404, origin);
 
+    // Staff ne khud banaya ticket ho to customer ka email hota hi nahi
+    // (26_optional_customer_email.sql). Ye galti nahi hai, isliye error
+    // nahi dete — warna caller ko lagta hai kuch toota hai.
+    if (!t.raised_by_email) {
+      return json({ ok: true, skipped: "no customer email" }, 200, origin);
+    }
+
     const html = layout(brand, {
       preheader: `Ticket #${t.id} — we have your request and will reply by email.`,
       heading: "We have your request",
@@ -337,6 +344,12 @@ Deno.serve(async (req) => {
       .eq("id", m.ticket_id)
       .single();
     if (!t) return json({ error: "Ticket not found" }, 404, origin);
+
+    // Bhejne ki jagah hi nahi. Message table me save ho chuka hai — team
+    // use dekh legi — bas mail nahi jaata.
+    if (!t.raised_by_email) {
+      return json({ ok: true, skipped: "no customer email" }, 200, origin);
+    }
 
     const html = layout(brand, {
       preheader: String(m.body).slice(0, 120),

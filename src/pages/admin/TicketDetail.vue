@@ -26,7 +26,10 @@
         </h1>
         <p class="mt-1 text-p-sm text-ink-gray-6">
           #{{ ticket.id }} &middot; {{ ticket.contact_name || "Unknown" }}
-          &lt;{{ ticket.raised_by_email }}&gt; &middot;
+          <template v-if="ticket.raised_by_email">
+            &lt;{{ ticket.raised_by_email }}&gt;
+          </template>
+          &middot;
           {{ formatDate(ticket.created_at) }}
         </p>
       </div>
@@ -35,9 +38,9 @@
         <!-- original request -->
         <div class="rounded-lg border border-outline-gray-2 p-4">
           <div class="mb-2 flex items-center gap-2">
-            <Avatar :label="ticket.contact_name || ticket.raised_by_email" size="sm" />
+            <Avatar :label="requesterLabel" size="sm" />
             <span class="text-p-sm font-medium text-ink-gray-8">
-              {{ ticket.contact_name || ticket.raised_by_email }}
+              {{ requesterLabel }}
             </span>
             <span class="text-p-sm text-ink-gray-5">
               {{ formatDate(ticket.created_at) }}
@@ -92,6 +95,26 @@
 
       <!-- reply box -->
       <div class="border-t border-outline-gray-2 px-6 py-4">
+        <!--
+          Bina email wale ticket par "Send reply" ka koi matlab nahi — mail
+          kahin jaayega hi nahi. Ye baat likhne ke BAAD batana bekaar hai,
+          isliye box ke upar hai.
+        -->
+        <div
+          v-if="ticket && !ticket.raised_by_email && !isInternal"
+          class="mb-3 flex gap-2 rounded-lg border border-outline-amber-2 bg-surface-amber-1 p-3"
+        >
+          <FeatherIcon
+            name="alert-triangle"
+            class="mt-0.5 h-4 w-4 shrink-0 text-ink-amber-3"
+          />
+          <p class="text-p-sm text-ink-gray-7">
+            This ticket has no customer email, so nothing will be emailed.
+            What you write is saved here for the team only. Add an email in
+            the database if the customer should get replies.
+          </p>
+        </div>
+
         <div class="relative">
           <FormControl
             ref="replyBox"
@@ -257,7 +280,7 @@
         <div class="flex justify-between">
           <span class="text-ink-gray-6">Email</span>
           <span class="truncate pl-2 text-ink-gray-8">
-            {{ ticket.raised_by_email }}
+            {{ ticket.raised_by_email || "—" }}
           </span>
         </div>
         <div class="flex justify-between">
@@ -336,7 +359,7 @@ const auth = useAuthStore();
 type Ticket = {
   id: number; subject: string; description: string;
   status: string; priority: string;
-  raised_by_email: string; contact_name: string | null;
+  raised_by_email: string | null; contact_name: string | null;
   company_name: string | null; assigned_to: string | null;
   category_id: string | null;
   due_date: string | null;
@@ -473,6 +496,18 @@ const categoryOptions = ref<{ label: string; value: string }[]>([]);
  * Customer ke apne reply par author_id null hota hai. Wahan naam dikhana
  * theek hai — wo ticket ka apna maalik hai, koi staff nahi.
  */
+/**
+ * Ticket kis ke naam par khula hai.
+ *
+ * Ab teeno khali ho sakte hain: naam optional tha hi, aur email bhi ab
+ * optional hai (26_optional_customer_email.sql). Aisa ticket staff ne
+ * khud banaya hota hai — phone par aayi baat, ya andar ka kaam.
+ */
+const requesterLabel = computed(
+  () =>
+    ticket.value?.contact_name || ticket.value?.raised_by_email || "Internal"
+);
+
 function messageAuthor(m: Message) {
   if (m.author_id) {
     return staffLabels.value[m.author_id] || "Agent";
@@ -727,7 +762,11 @@ async function sendReply() {
 
     // Internal note kabhi mail nahi hona chahiye. Ye check server par bhi
     // hai — galti se chala gaya to wapas nahi le sakte.
-    if (!isInternal.value && msg) {
+    // Email hi na ho to notify ko bulane ka matlab nahi. Bulate to wo
+    // waise bhi mana kar deta (usme bhi yahi check hai), par tab agent ko
+    // laal "email nahi ja saka" dikhta — jabki koi galti hui hi nahi.
+    // Ye ticket hi aisa hai. Warning upar box ke sar par pehle se hai.
+    if (!isInternal.value && msg && ticket.value?.raised_by_email) {
       emailSent.value = await notify("agent_reply", { message_id: msg.id });
     }
 

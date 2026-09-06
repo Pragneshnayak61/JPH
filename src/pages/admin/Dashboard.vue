@@ -191,14 +191,18 @@
             <td class="max-w-0 px-3 py-2.5">
               <!--
                 Jis ticket ko kisi customer ne nahi bheja (staff ne khud
-                banaya, ya import hua), uska raised_by_email banane wale
-                ka apna hi email hota hai — kyunki wo column NOT NULL hai
-                aur khali nahi chhoda ja sakta.
+                banaya, ya import hua), us par "Internal" likha jaata hai.
+                Usse ye bhi pata chal jaata hai ki ye bahar se nahi aaya.
 
-                Wo email dikhane ka koi matlab nahi: 77 rows me ek hi
-                cheez chhap jaati hai. Aise ticket par "Internal" likhna
-                zyada sach hai — usse ye bhi pata chalta hai ki ye bahar
-                se nahi aaya.
+                Purane import kiye hue ticket par banane wale ka apna hi
+                email pada hai — us waqt ye column NOT NULL tha aur khali
+                chhoda hi nahi ja sakta tha. Wo email dikhane ka koi
+                matlab nahi: 77 rows me ek hi cheez chhap jaati hai.
+                Isliye created_by wala naam use hota hai, email nahi.
+
+                Ab ye column khali reh sakta hai
+                (26_optional_customer_email.sql), isliye fromLabel ka
+                aakhri fallback bhi khali sambhalta hai.
               -->
               <span
                 class="block truncate text-p-sm text-ink-gray-6"
@@ -257,13 +261,19 @@
             placeholder="Ramesh Kumar"
             :disabled="creating"
           />
-          <FormControl
-            v-model="form.email"
-            type="email"
-            label="Customer email"
-            placeholder="ramesh@company.com"
-            :disabled="creating"
-          />
+          <div>
+            <FormControl
+              v-model="form.email"
+              type="email"
+              label="Customer email (optional)"
+              placeholder="ramesh@company.com"
+              :disabled="creating"
+            />
+            <p class="mt-1 text-p-sm text-ink-gray-5">
+              Leave blank for a phone call, a walk-in, or internal work.
+              Without it no reply can be emailed from this ticket.
+            </p>
+          </div>
           <FormControl
             v-model="form.company_name"
             label="Company"
@@ -336,7 +346,7 @@ type Ticket = {
   status: string;
   priority: string;
   contact_name: string | null;
-  raised_by_email: string;
+  raised_by_email: string | null;
   assigned_to: string | null;
   company_name: string | null;
   created_by: string | null;
@@ -564,7 +574,10 @@ function fromLabel(t: Ticket) {
   if (t.contact_name) return t.contact_name;
   const s = t.created_by ? staff.value[t.created_by] : null;
   if (s) return s.email || s.label;
-  return t.raised_by_email;
+  // Ab yahan khali bhi ho sakta hai (26_optional_customer_email.sql).
+  // "Internal" isliye ki wo sirf khali jagah nahi bharta — wo batata hai
+  // ki is ticket ke peechhe koi bahar wala hai hi nahi.
+  return t.raised_by_email || "Internal";
 }
 
 /**
@@ -621,7 +634,10 @@ function openNew() {
 
 async function createTicket() {
   createError.value = "";
-  if (!form.email.trim()) return (createError.value = "Customer email is required");
+  // Email ki koi rok NAHI. Phone par aayi baat, koi paas aakar bol gaya,
+  // ya kaam andar ka hai jiska customer hi nahi — in sabme email hota hi
+  // nahi. Pehle rok thi to staff apna hi email bhar deta tha, aur wo
+  // jhoot data me baith jaata tha (26_optional_customer_email.sql).
   if (!form.subject.trim()) return (createError.value = "Subject is required");
   if (!form.description.trim()) return (createError.value = "Please describe the problem");
 
@@ -636,7 +652,7 @@ async function createTicket() {
         subject: form.subject.trim(),
         description: form.description.trim(),
         priority: form.priority,
-        raised_by_email: form.email.trim().toLowerCase(),
+        raised_by_email: form.email.trim().toLowerCase() || null,
         contact_name: form.contact_name.trim() || null,
         company_name: form.company_name.trim() || null,
         created_by: auth.profile?.id ?? null,
