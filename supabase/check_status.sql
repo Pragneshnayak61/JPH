@@ -8,6 +8,27 @@
 -- Yaad rakhne ki zaroorat nahi honi chahiye — database khud bata sakta
 -- hai ki usme kya bana hua hai. Har row ek script hai aur uske saamne
 -- uski haalat.
+--
+-- KRAM JAAN-BOOJH KAR AISA HAI
+--
+-- Supabase ka SQL Editor kai queries chalane par SIRF AAKHRI ka result
+-- dikhata hai. Isliye script ki list — jo asli maqsad hai — sabse neeche
+-- rakhi hai. Poori file paste kar ke Run dabaiye, wahi list dikhegi.
+
+
+-- ---------------------------------------------------------------- 1/2
+-- Email kahin peechhe to nahi reh gaya
+
+select p.email as profile_email,
+       u.email as login_email,
+       (p.email = u.email) as mile_hue
+  from public.profiles p
+  join auth.users u on u.id = p.id
+ order by u.created_at;
+
+
+-- ---------------------------------------------------------------- 2/2
+-- Kaunsi script chal chuki hai (YAHI wo list hai jo result me aayegi)
 
 select '13 — ticket categories' as script,
        case when to_regclass('public.ticket_categories') is null
@@ -121,12 +142,3 @@ select '31 — evidence bucket',
               select 1 from storage.buckets where id = 'ops-evidence')
             then 'ho gaya' else 'BAAKI HAI' end
 order by script;
-
-
--- Email kahin peechhe to nahi reh gaya (sab true hone chahiye):
-select p.email as profile_email,
-       u.email as login_email,
-       (p.email = u.email) as mile_hue
-  from public.profiles p
-  join auth.users u on u.id = p.id
- order by u.created_at;
