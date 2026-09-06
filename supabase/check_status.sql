@@ -141,4 +141,9 @@ select '31 — evidence bucket',
        case when exists (
               select 1 from storage.buckets where id = 'ops-evidence')
             then 'ho gaya' else 'BAAKI HAI' end
+union all
+select '32 — demo data (marzi ki cheez)',
+       case when exists (
+              select 1 from public.organizations where name like 'Demo · %')
+            then 'laga hua hai' else 'nahi laga' end
 order by script;
