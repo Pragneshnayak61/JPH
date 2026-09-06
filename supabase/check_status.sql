@@ -83,6 +83,43 @@ select '26 — customer email optional',
                  and column_name  = 'raised_by_email'
                  and is_nullable  = 'YES')
             then 'ho gaya' else 'BAAKI HAI' end
+union all
+select '27 — operations ka dhaancha',
+       case when to_regclass('public.ops_task_executions') is null
+            then 'BAAKI HAI' else 'ho gaya' end
+union all
+select '28 — operations task library',
+       -- Ginti pg_stat se le rahe hain, `count(*) from ops_task_catalog`
+       -- se nahi. Wajah: agar 27 abhi chali hi na ho to wo table hoti hi
+       -- nahi, aur Postgres query ko PADHTE waqt hi error de deta —
+       -- poori status script fail ho jaati. pg_stat hamesha maujood hai.
+       case when coalesce((select n_live_tup from pg_stat_user_tables
+                            where schemaname = 'public'
+                              and relname = 'ops_task_catalog'), 0) > 0
+            then 'ho gaya' else 'BAAKI HAI' end
+union all
+select '29 — operations ke RPC',
+       case when exists (
+              select 1 from pg_proc f
+                join pg_namespace n on n.oid = f.pronamespace
+               where n.nspname = 'public' and f.proname = 'ops_today')
+            then 'ho gaya' else 'BAAKI HAI' end
+union all
+select '30 — recurring tasks banna',
+       case when exists (
+              select 1 from pg_proc f
+                join pg_namespace n on n.oid = f.pronamespace
+               where n.nspname = 'public' and f.proname = 'ops_generate_due')
+            then 'ho gaya' else 'BAAKI HAI' end
+union all
+select '30b — pg_cron (marzi ki cheez)',
+       case when exists (select 1 from pg_extension where extname = 'pg_cron')
+            then 'ho gaya' else 'off hai — app phir bhi chalti hai' end
+union all
+select '31 — evidence bucket',
+       case when exists (
+              select 1 from storage.buckets where id = 'ops-evidence')
+            then 'ho gaya' else 'BAAKI HAI' end
 order by script;
 
 
