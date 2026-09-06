@@ -8,6 +8,10 @@ declare module "vue-router" {
     requiresAuth?: boolean;
     staff?: boolean;
     admin?: boolean;
+    /** Operations ka koi bhi darwaza (run ya manage) */
+    ops?: boolean;
+    /** Sirf checklist banane wale — jaanch karne wale ko nahi */
+    opsManage?: boolean;
   }
 }
 
@@ -94,6 +98,29 @@ const routes: RouteRecordRaw[] = [
         meta: { admin: true },
       },
       {
+        // Subah wali checklist. `ops` matlab run ya manage, dono me se
+        // koi bhi — jaanch karne wale ka rozana ka page yahi hai.
+        path: "operations",
+        name: "Operations",
+        component: () => import("@/pages/admin/OperationsToday.vue"),
+        meta: { ops: true },
+      },
+      {
+        // Client, device, library aur checklist — ye tay karna ki
+        // KAUNSI jaanch honi chahiye. Ye faisla jaanch karne wale ka
+        // nahi hai, isliye alag permission.
+        path: "operations/setup",
+        name: "OperationsSetup",
+        component: () => import("@/pages/admin/OperationsSetup.vue"),
+        meta: { opsManage: true },
+      },
+      {
+        path: "operations/reports",
+        name: "OperationsReports",
+        component: () => import("@/pages/admin/OperationsReports.vue"),
+        meta: { ops: true },
+      },
+      {
         path: "profile",
         name: "MyProfile",
         component: () => import("@/pages/admin/MyProfile.vue"),
@@ -155,6 +182,16 @@ router.beforeEach(async (to) => {
   // Kuch pages sirf admin ke liye — jaise People, jahan sabke naam
   // aur email dikhte hain.
   if (to.meta.admin && !auth.isAdmin) {
+    return { name: "Dashboard" };
+  }
+
+  // Operations. Asli rok RLS aur RPC me hai — bina permission ke data
+  // aata hi nahi. Ye sirf isliye ki page khali khulne ke bajaye user
+  // wapas wahan jaye jahan uska kaam hai.
+  if (to.meta.opsManage && !auth.canManageOps) {
+    return auth.canOps ? { name: "Operations" } : { name: "Dashboard" };
+  }
+  if (to.meta.ops && !auth.canOps) {
     return { name: "Dashboard" };
   }
 

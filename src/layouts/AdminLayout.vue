@@ -88,6 +88,9 @@ onMounted(() => settingsStore.load());
 const nav = computed(() => [
   { to: "/admin", label: "Dashboard", icon: "home" },
   { to: "/admin/analytics", label: "Analytics", icon: "bar-chart-2" },
+  ...(auth.canOps
+    ? [{ to: "/admin/operations", label: "Operations", icon: "server" }]
+    : []),
   ...(auth.isAdmin
     ? [{ to: "/admin/agents", label: "People", icon: "users" }]
     : []),

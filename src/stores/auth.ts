@@ -23,6 +23,11 @@ export type Role = {
   can_manage_agents: boolean;
   can_manage_customers: boolean;
   can_change_settings: boolean;
+  // Operations module (27_ops_schema.sql). roles ko `select("*")` se
+  // padha jaata hai, isliye ye columns apne aap aa jaate hain — sirf
+  // type me likhna tha.
+  can_manage_operations: boolean;
+  can_run_operations: boolean;
 };
 
 export const useAuthStore = defineStore("auth", () => {
@@ -41,6 +46,19 @@ export const useAuthStore = defineStore("auth", () => {
     () => profile.value?.kind === "admin" || profile.value?.kind === "agent"
   );
   const isAdmin = computed(() => profile.value?.kind === "admin");
+
+  /**
+   * Operations ka koi bhi darwaza khula hai ya nahi.
+   *
+   * Nav me link dikhane ke liye "dono me se ek" chahiye — jaanch karne
+   * wale ke paas run hoti hai, checklist banane wale ke paas manage.
+   * Jiske paas ek bhi na ho use link dikhna hi nahi chahiye; wo click
+   * karke bounce ho, isse bura kuch nahi.
+   */
+  const canOps = computed(
+    () => can("can_run_operations") || can("can_manage_operations")
+  );
+  const canManageOps = computed(() => can("can_manage_operations"));
 
   /** Admin ke paas hamesha sab permissions hoti hain, role kuch bhi ho. */
   function can(perm: keyof Role): boolean {
@@ -121,7 +139,7 @@ export const useAuthStore = defineStore("auth", () => {
 
   return {
     session, profile, role, ready,
-    isLoggedIn, isStaff, isAdmin,
+    isLoggedIn, isStaff, isAdmin, canOps, canManageOps,
     can, init, loadProfile, signOut,
   };
 });

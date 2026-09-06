@@ -102,6 +102,32 @@ Ek baar ka setup, warna email me code nahi jaayega:
    email jaati hain — teen log ek saath password bhool jaayein to teesre
    ko code milega hi nahi.
 
+## Operations (server administration)
+
+Helpdesk ke saath-saath 3-5 clients ke server, network, backup aur CCTV
+ki rozana/haftawari/mahine ki jaanch. `/admin/operations`.
+
+Teen page:
+
+- **`/admin/operations`** — subah wali checklist. Gole par ek click =
+  "ho gaya". Baaki paanch status "More" me, remarks aur saboot ke saath.
+- **`/admin/operations/setup`** — client, device, task library, aur har
+  client ki apni checklist. **Ye pehle bharna padta hai**, warna
+  checklist khali rehti hai.
+- **`/admin/operations/reports`** — date range, client, CSV export.
+
+Do baatein jo dhaanche me hain:
+
+- **Duplicate rok database par hai.** `ops_task_executions` par
+  `UNIQUE (client_task_id, due_date)`. Isiliye generator ko cron *aur*
+  page dono chala sakte hain — dobara chalne par row banti hi nahi.
+- **History mit nahi sakti.** Task par `on delete restrict`, aur har row
+  apna `task_name`/client/device khud likh leti hai. Naam badalne par
+  purani report wahi bolti hai jo us din sach tha.
+
+Permissions `roles` me hain: `can_run_operations` (jaanch karna) aur
+`can_manage_operations` (checklist banana). Dono ka default `false`.
+
 ## Suraksha kaise kaam karti hai
 
 Yahan koi backend server nahi hai — browser seedha Supabase se baat karta hai. Isliye **poori suraksha database ke andar** hai (Row Level Security).
