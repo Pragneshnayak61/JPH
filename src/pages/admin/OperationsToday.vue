@@ -162,9 +162,15 @@
                 <Badge v-if="r.is_backlog" theme="orange" variant="subtle">
                   {{ shortDate(r.due_date) }}
                 </Badge>
-                <Badge v-if="r.ticket_id" theme="blue" variant="subtle">
-                  #{{ r.ticket_id }}
-                </Badge>
+                <!-- Number dikhana kaafi nahi tha — dekhne wale ne
+                     use haath se dhoondhna padta tha. -->
+                <RouterLink
+                  v-if="r.ticket_id"
+                  :to="`/admin/tickets/${r.ticket_id}`"
+                  @click.stop
+                >
+                  <Badge theme="blue" variant="subtle">#{{ r.ticket_id }}</Badge>
+                </RouterLink>
               </div>
               <p class="truncate text-p-sm text-ink-gray-5">
                 {{ [r.device_name, r.category_name, r.assigned_label].filter(Boolean).join(" · ") }}

@@ -35,6 +35,52 @@
       </div>
 
       <div class="flex-1 overflow-auto px-6 py-4">
+        <!--
+          Ticket kisi jaanch se aayi ho to sabse upar wahi.
+          Description me ye sab likha hota hai, par likhi hui baat se ye
+          pata nahi chalta ki yahi jaanch pichhle hafte bhi fail hui thi.
+          "See earlier results" us tak le jaata hai.
+        -->
+        <div
+          v-if="opsSource"
+          class="mb-4 rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-3"
+        >
+          <div class="flex items-start gap-2">
+            <FeatherIcon name="server" class="mt-0.5 h-4 w-4 shrink-0 text-ink-gray-6" />
+            <div class="min-w-0 flex-1">
+              <p class="text-p-sm font-medium text-ink-gray-8">
+                Raised from the operations checklist
+              </p>
+              <p class="mt-0.5 text-p-sm text-ink-gray-6">
+                {{
+                  [
+                    opsSource.client_name,
+                    opsSource.device_name,
+                    opsSource.category_name,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+                }}
+              </p>
+              <p class="mt-0.5 text-p-sm text-ink-gray-6">
+                <strong class="text-ink-gray-8">{{ opsSource.task_name }}</strong>
+                &mdash; {{ opsStatusLabel(opsSource.status) }}
+                &middot; {{ opsDate(opsSource.due_date) }}
+                <template v-if="opsSource.performed_label">
+                  &middot; {{ opsSource.performed_label }}
+                </template>
+              </p>
+              <RouterLink
+                v-if="auth.canOps"
+                to="/admin/operations"
+                class="mt-1 inline-block text-p-sm text-ink-gray-7 underline"
+              >
+                Open the checklist
+              </RouterLink>
+            </div>
+          </div>
+        </div>
+
         <!-- original request -->
         <div class="rounded-lg border border-outline-gray-2 p-4">
           <div class="mb-2 flex items-center gap-2">
@@ -355,6 +401,49 @@ import { useRouter } from "vue-router";
 const props = defineProps<{ id: string }>();
 const router = useRouter();
 const auth = useAuthStore();
+
+type OpsSource = {
+  execution_id: number;
+  client_task_id: string;
+  client_name: string;
+  device_name: string | null;
+  category_name: string | null;
+  task_name: string;
+  due_date: string;
+  status: string;
+  remarks: string | null;
+  performed_label: string | null;
+  performed_at: string | null;
+};
+const opsSource = ref<OpsSource | null>(null);
+
+const OPS_STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  in_progress: "In progress",
+  completed: "Completed",
+  failed: "Failed",
+  attention: "Needs attention",
+  skipped: "Skipped",
+};
+function opsStatusLabel(s: string) {
+  return OPS_STATUS_LABELS[s] ?? s;
+}
+
+/**
+ * due_date sirf ek DIN hai, waqt nahi.
+ *
+ * formatDate() ghante-minute bhi lagata hai, aur usme "7 Sep, 05:30"
+ * jaisa kuch dikhta — wo 05:30 kahin se aaya hi nahi, wo sirf UTC se
+ * IST ka farq hai.
+ *
+ * T00:00:00 lagana bhi zaroori hai: khali "2026-09-07" ko JavaScript UTC
+ * maanta hai, aur peechhe wale timezone me wo ek din pehle dikhne lagta.
+ */
+function opsDate(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString(undefined, {
+    day: "numeric", month: "short", year: "numeric",
+  });
+}
 
 type Ticket = {
   id: number; subject: string; description: string;
@@ -691,6 +780,16 @@ async function load() {
       p_ticket_id: Number(props.id),
     });
     messages.value = (m as Message[]) ?? [];
+
+    // Zyadatar ticket kisi jaanch se nahi aati, isliye khali jawab hi
+    // aam haal hai — koi error nahi. Aur ops_task_executions se seedha
+    // nahi padh sakte: us par RLS lagi hai (usme hostname aur IP tak
+    // pahunch hai). Ye function sirf utna deta hai jitna ticket par kaam
+    // karne wale ko chahiye — device ka naam, hostname/IP nahi.
+    const { data: src } = await supabase.rpc("ops_ticket_source", {
+      p_ticket_id: Number(props.id),
+    });
+    opsSource.value = ((src as OpsSource[]) ?? [])[0] ?? null;
 
     // profiles se seedha nahi padh sakte — RLS ab sirf apni profile
     // padhne deti hai. staff_directory() sabko sirf "Agent 1" jaisi ID
