@@ -101,6 +101,101 @@
         </div>
       </div>
 
+      <!--
+        Jo baar-baar bigadti hai.
+
+        Sabse upar isliye ki poori report me kaam ki baat yahi hai. Sab
+        theek chal raha ho to ye hissa aata hi nahi — khali table dikha
+        kar dhyan maangna galat hoga.
+      -->
+      <div
+        v-if="troubled.length"
+        class="mb-5 overflow-hidden rounded-lg border border-outline-gray-2"
+      >
+        <div class="bg-surface-gray-1 px-4 py-2">
+          <span class="text-p-sm font-medium text-ink-gray-8">
+            Checks that keep going wrong
+          </span>
+          <span class="ml-2 text-p-sm text-ink-gray-5">
+            worth looking at the machine, not the checklist
+          </span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead class="text-p-sm text-ink-gray-6">
+              <tr>
+                <th class="px-4 py-2 font-medium">Check</th>
+                <th class="px-4 py-2 font-medium">Client</th>
+                <th class="px-4 py-2 font-medium">Runs</th>
+                <th class="px-4 py-2 font-medium">Failed</th>
+                <th class="px-4 py-2 font-medium">Attention</th>
+                <th class="px-4 py-2 font-medium">Last trouble</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-outline-gray-2">
+              <tr v-for="t in troubled" :key="t.key">
+                <td class="px-4 py-2 text-p-sm text-ink-gray-8">
+                  {{ t.task }}
+                  <span v-if="t.device" class="text-ink-gray-5">· {{ t.device }}</span>
+                </td>
+                <td class="px-4 py-2 text-p-sm text-ink-gray-6">{{ t.client }}</td>
+                <td class="px-4 py-2 text-p-sm text-ink-gray-6">{{ t.runs }}</td>
+                <td
+                  class="px-4 py-2 text-p-sm"
+                  :class="t.failed ? 'text-ink-red-7' : 'text-ink-gray-5'"
+                >
+                  {{ t.failed }}
+                </td>
+                <td
+                  class="px-4 py-2 text-p-sm"
+                  :class="t.attention ? 'text-ink-amber-9' : 'text-ink-gray-5'"
+                >
+                  {{ t.attention }}
+                </td>
+                <td class="px-4 py-2 text-p-sm text-ink-gray-6">
+                  {{ t.last ? shortDate(t.last) : "—" }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!--
+        Din-ba-din. Ek din ki range me sirf ek patti banti, isliye tab
+        chhod dete hain.
+      -->
+      <div v-if="byDay.length > 1" class="mb-5 rounded-lg border border-outline-gray-2 p-4">
+        <div class="mb-3 flex items-baseline justify-between">
+          <h2 class="text-p-base font-medium text-ink-gray-8">Day by day</h2>
+          <span class="text-p-sm text-ink-gray-5">completed, out of what was due</span>
+        </div>
+        <div class="flex h-24 items-end gap-px overflow-x-auto">
+          <div
+            v-for="d in byDay"
+            :key="d.date"
+            class="flex min-w-[6px] flex-1 flex-col justify-end self-stretch"
+            :title="`${shortDate(d.date)} — ${d.done}/${d.countable} (${d.percent}%)`"
+          >
+            <div
+              class="rounded-sm"
+              :class="
+                d.percent === 100
+                  ? 'bg-surface-green-5'
+                  : d.percent >= 80
+                    ? 'bg-surface-gray-6'
+                    : 'bg-surface-red-5'
+              "
+              :style="{ height: Math.max(d.percent, 3) + '%' }"
+            />
+          </div>
+        </div>
+        <div class="mt-2 flex justify-between text-p-sm text-ink-gray-5">
+          <span>{{ shortDate(byDay[0].date) }}</span>
+          <span>{{ shortDate(byDay[byDay.length - 1].date) }}</span>
+        </div>
+      </div>
+
       <!-- per category -->
       <div class="mb-5 overflow-hidden rounded-lg border border-outline-gray-2">
         <div class="bg-surface-gray-1 px-4 py-2 text-p-sm font-medium text-ink-gray-8">
@@ -127,6 +222,48 @@
               <td class="px-4 py-2 text-p-sm" :class="c.attention ? 'text-ink-amber-9' : 'text-ink-gray-5'">
                 {{ c.attention }}
               </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!--
+        Kisne kitna kiya. Naam nahi, agent code — pehchaan is app me
+        sabse chhupi rehti hai.
+      -->
+      <div
+        v-if="byPerson.length"
+        class="mb-5 overflow-hidden rounded-lg border border-outline-gray-2"
+      >
+        <div class="bg-surface-gray-1 px-4 py-2">
+          <span class="text-p-sm font-medium text-ink-gray-8">By person</span>
+          <span class="ml-2 text-p-sm text-ink-gray-5">
+            only checks somebody has already acted on
+          </span>
+        </div>
+        <table class="w-full text-left">
+          <thead class="text-p-sm text-ink-gray-6">
+            <tr>
+              <th class="px-4 py-2 font-medium">Who</th>
+              <th class="px-4 py-2 font-medium">Acted on</th>
+              <th class="px-4 py-2 font-medium">Completed</th>
+              <th class="px-4 py-2 font-medium">Failed</th>
+              <th class="px-4 py-2 font-medium">Attention</th>
+              <th class="px-4 py-2 font-medium">Skipped</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-gray-2">
+            <tr v-for="p in byPerson" :key="p.name">
+              <td class="px-4 py-2 text-p-sm text-ink-gray-8">{{ p.name }}</td>
+              <td class="px-4 py-2 text-p-sm text-ink-gray-6">{{ p.total }}</td>
+              <td class="px-4 py-2 text-p-sm text-ink-green-8">{{ p.done }}</td>
+              <td class="px-4 py-2 text-p-sm" :class="p.failed ? 'text-ink-red-7' : 'text-ink-gray-5'">
+                {{ p.failed }}
+              </td>
+              <td class="px-4 py-2 text-p-sm" :class="p.attention ? 'text-ink-amber-9' : 'text-ink-gray-5'">
+                {{ p.attention }}
+              </td>
+              <td class="px-4 py-2 text-p-sm text-ink-gray-5">{{ p.skipped }}</td>
             </tr>
           </tbody>
         </table>
@@ -351,6 +488,114 @@ const byCategory = computed(() => {
     if (r.status === "attention") g.attention += 1;
   }
   return [...map.values()].sort((a, b) => b.total - a.total);
+});
+
+/**
+ * Jo jaanch baar-baar bigadti hai.
+ *
+ * Baaki har hisaab ye batata hai ki KAAM HUA YA NAHI. Ye ek hi cheez
+ * batati hai ki KYA KHARAB HAI — aur asli faayda usi me hai.
+ *
+ * Ek din backup fail ho jaye to wo us din ka masla hai. Wahi backup
+ * mahine me chhe baar fail ho to wo checklist ka masla nahi raha, wo
+ * server ka masla hai — aur ye baat aaj tak kahin nahi dikhti thi,
+ * kyunki har din ki row alag-alag padi rehti hai.
+ *
+ * Client ke saath jodh kar ginte hain, sirf task ke naam se nahi. "Disk
+ * space" teeno client par lagti hai; teeno ko ek me mila dene se pata
+ * hi na chalta ki kis client ki disk bhar rahi hai.
+ */
+const troubled = computed(() => {
+  type T = {
+    key: string; task: string; client: string; device: string | null;
+    runs: number; failed: number; attention: number; last: string;
+  };
+  const map = new Map<string, T>();
+  for (const r of rows.value) {
+    const key = `${r.client_name}|${r.task_name}|${r.device_name ?? ""}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        key, task: r.task_name, client: r.client_name,
+        device: r.device_name, runs: 0, failed: 0, attention: 0, last: "",
+      });
+    }
+    const g = map.get(key)!;
+    g.runs += 1;
+    if (r.status === "failed") g.failed += 1;
+    if (r.status === "attention") g.attention += 1;
+    if (r.status === "failed" || r.status === "attention") {
+      if (r.due_date > g.last) g.last = r.due_date;
+    }
+  }
+  return [...map.values()]
+    .filter((g) => g.failed + g.attention > 0)
+    // Fail ka wazan attention se zyada — dono ko barabar ginne par ek
+    // baar ka asli fail, teen baar ke "dekhte rehna" ke neeche dab
+    // jaata hai.
+    .sort((a, b) => b.failed * 2 + b.attention - (a.failed * 2 + a.attention))
+    .slice(0, 10);
+});
+
+/**
+ * Kisne kitna kiya.
+ *
+ * Naam yahan nahi aata — ops_person_label() agent code deta hai, kyunki
+ * is app me pehchaan sabse chhupi rehti hai (24_identity.sql). Aur ye
+ * theek bhi hai: hisaab ke liye ye jaanna kaafi hai ki kaam BANT kaise
+ * raha hai, ye nahi ki kaun hai.
+ *
+ * Jo rows abhi tak kisi ne chhui hi nahi (pending) unka koi maalik nahi
+ * hota, isliye wo yahan se bahar hain — warna "koi nahi" sabse bada
+ * naam ban jaata aur baaki sab uske neeche dab jaate.
+ */
+const byPerson = computed(() => {
+  const map = new Map<
+    string,
+    { name: string; done: number; failed: number; attention: number; skipped: number; total: number }
+  >();
+  for (const r of rows.value) {
+    if (!r.performed_label) continue;
+    const k = r.performed_label;
+    if (!map.has(k)) {
+      map.set(k, { name: k, done: 0, failed: 0, attention: 0, skipped: 0, total: 0 });
+    }
+    const g = map.get(k)!;
+    g.total += 1;
+    if (r.status === "completed") g.done += 1;
+    if (r.status === "failed") g.failed += 1;
+    if (r.status === "attention") g.attention += 1;
+    if (r.status === "skipped") g.skipped += 1;
+  }
+  return [...map.values()].sort((a, b) => b.total - a.total);
+});
+
+/**
+ * Din-ba-din.
+ *
+ * Ek mahine ka ek hi aankda ("94% poora") ye chhupa deta hai ki kis din
+ * kya hua. 94% teen tarah se aa sakta hai: roz thoda chhootna, ya ek
+ * din poora tootna. Dono ka ilaaj alag hai.
+ *
+ * Chart library nahi laga rahe — ye seedhi si patti hai, aur uske liye
+ * ek aur bhaari chunk uthana bekaar hoga.
+ */
+const byDay = computed(() => {
+  const map = new Map<string, { date: string; countable: number; done: number }>();
+  for (const r of rows.value) {
+    if (!map.has(r.due_date)) {
+      map.set(r.due_date, { date: r.due_date, countable: 0, done: 0 });
+    }
+    const g = map.get(r.due_date)!;
+    // Wahi niyam jo byClient me hai: chhodi hui jaanch adhoori nahi.
+    if (r.status !== "skipped") g.countable += 1;
+    if (r.status === "completed") g.done += 1;
+  }
+  return [...map.values()]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((g) => ({
+      ...g,
+      percent: g.countable === 0 ? 100 : Math.round((100 * g.done) / g.countable),
+    }));
 });
 
 const statusChart = computed(() => {
