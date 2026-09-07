@@ -644,11 +644,26 @@ function exportCsv() {
   a.href = url;
   a.download = `operations-${from.value}-to-${to.value}.csv`;
   a.click();
-  URL.revokeObjectURL(url);
+  // Turant revoke karne par kuch browser download shuru hone se pehle
+  // hi link tod dete hain aur file khali aa jaati hai. Ek pal ruk jaate
+  // hain — memory tab bhi chhoot jaati hai.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function cell(v: string) {
-  const s = String(v ?? "");
+  let s = String(v ?? "");
+
+  // = + - @ se shuru hone wala khaana Excel FORMULA samajh leta hai.
+  //
+  // Remarks aadmi khud likhta hai, aur ye file client tak jaati hai.
+  // Kisi ne remark me "=" se shuru kar diya to wo file kholne wale ke
+  // computer par chal jaata. Data ki file ko chalne wali cheez ban
+  // jaane dena galat hai — chahe abhi koi aisa likh na raha ho.
+  //
+  // Aage ek quote lagane se Excel ise seedha text maan leta hai aur wo
+  // quote dikhata bhi nahi. Likha hua waisa ka waisa rehta hai.
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+
   // Comma, quote ya newline wale khaane ko quote karna hi padta hai,
   // warna ek remark poori row ke khaane khisak deta hai.
   if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;

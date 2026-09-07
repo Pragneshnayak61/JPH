@@ -83,7 +83,17 @@ export async function uploadEvidence(
   //
   // Folder execution ke id ka hai, taaki storage me dekh kar bhi pata
   // chale ki kaunsi file kis jaanch ki thi.
-  const ext = (file.name.split(".").pop() || "bin").toLowerCase().slice(0, 6);
+  //
+  // Extension bhi DHO kar lete hain. Upar likha hai "user ka naam nahi
+  // lete", par extension to user ke naam se hi nikal rahi thi — aur
+  // usme slash ho sakta hai. "notes.tar/../x" jaisa naam path ko
+  // execution ke folder se bahar le jaata. Sirf akshar aur ank rehne
+  // dete hain; kuch na bache to "bin".
+  const ext =
+    (file.name.split(".").pop() || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .slice(0, 6) || "bin";
   const path = `${executionId}/${crypto.randomUUID()}.${ext}`;
 
   const { error: upErr } = await supabase.storage
@@ -146,9 +156,24 @@ export async function evidenceUrl(path: string): Promise<string | null> {
  * baad me mitaya na ja sake.
  */
 export async function deleteEvidence(f: EvidenceFile): Promise<void> {
+  // File pehle, row baad me. Ulta karne par row mit jaati aur file bucket
+  // me padi rehti — "hata diya" kehna aur cheez ka wahin pade rehna, dono
+  // ek saath sach nahi ho sakte.
   const { error } = await supabase.storage.from(BUCKET).remove([f.file_path]);
   if (error) throw new Error(error.message);
-  await supabase.from("ops_execution_files").delete().eq("id", f.id);
+
+  // Row ka error pehle chup-chaap gira diya jaata tha. Tab list me ek
+  // naam bacha reh jaata jiska file hai hi nahi, aur khulta bhi nahi —
+  // aadmi samajhta ki app kharab hai.
+  const { error: rowErr } = await supabase
+    .from("ops_execution_files")
+    .delete()
+    .eq("id", f.id);
+  if (rowErr) {
+    throw new Error(
+      "The file was deleted but its record could not be removed. Please refresh."
+    );
+  }
 }
 
 function guessType(name: string): string {

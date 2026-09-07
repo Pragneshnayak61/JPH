@@ -160,6 +160,17 @@ select '34 — generation ki sehat',
                 join pg_namespace n on n.oid = f.pronamespace
                where n.nspname = 'public' and f.proname = 'ops_generation_health')
             then 'ho gaya' else 'BAAKI HAI' end
+union all
+select '36 — remark mitane ka sudhar',
+       -- Function to pehle se hai, isliye uske hone se kuch pata nahi
+       -- chalta. Uske andar `p_remarks is null` likha hai ya nahi, wahi
+       -- batata hai ki naya wala chal chuka hai.
+       case when exists (
+              select 1 from pg_proc f
+                join pg_namespace n on n.oid = f.pronamespace
+               where n.nspname = 'public' and f.proname = 'ops_complete'
+                 and pg_get_functiondef(f.oid) like '%p_remarks is null%')
+            then 'ho gaya' else 'BAAKI HAI' end
 -- "Aaj ki checklist sach me bani ya nahi" — ye sawal yahan JAAN-BOOJH KAR
 -- nahi hai. Uske liye ops_task_executions ko chhoona padta, aur agar 27
 -- chali hi na ho to Postgres poori status script ko padhte waqt hi gira
