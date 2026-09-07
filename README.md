@@ -2,7 +2,7 @@
 
 Frappe Helpdesk jaisa helpdesk — par Supabase par, aur bina server ke.
 
-**Stack:** Vue 3 + Vite + Tailwind 3 + `frappe-ui` (wahi library jo Frappe Helpdesk use karta hai) + Supabase + Cloudflare Pages
+**Stack:** Vue 3 + Vite + Tailwind 3 + `frappe-ui` (wahi library jo Frappe Helpdesk use karta hai) + Supabase + Cloudflare Workers
 
 ---
 
@@ -10,14 +10,13 @@ Frappe Helpdesk jaisa helpdesk — par Supabase par, aur bina server ke.
 
 | Cheez | Halat |
 |---|---|
-| Project setup, design/theme | ✅ ban gaya |
-| Guest ticket form (bina login) | ✅ ban gaya |
-| Login page | ✅ ban gaya |
-| Admin dashboard (tickets home par) | ✅ ban gaya |
-| Database schema + permissions | ✅ likh diya, chalana baaki |
-| Ticket detail page | ⏳ agla step |
-| Agent create / invite / manage | ⏳ agla step |
-| Email | ⏳ baad me |
+| Guest ticket form (bina login) | ✅ |
+| Login + forgot password (email par code) | ✅ |
+| Ticket dashboard, detail, reply, internal note | ✅ |
+| Agent create / manage / roles / permissions | ✅ |
+| Analytics | ✅ |
+| Operations (server administration) | ✅ |
+| Email bhejna (`notify` Edge Function) | ⚠️ SMTP baaki |
 
 ---
 
@@ -128,6 +127,46 @@ Do baatein jo dhaanche me hain:
 Permissions `roles` me hain: `can_run_operations` (jaanch karna) aur
 `can_manage_operations` (checklist banana). Dono ka default `false`.
 
+### Scripts, isi kram me
+
+| Script | Kya karti hai |
+|---|---|
+| `27_ops_schema.sql` | tables, enums, permissions, RLS |
+| `28_ops_seed.sql` | 6 category + 36 jaanchon ki library |
+| `29_ops_functions.sql` | checklist, ticket banana, summary, report |
+| `30_ops_generation.sql` | roz apne aap banna + pg_cron |
+| `31_ops_evidence.sql` | private `ops-evidence` bucket |
+| `32_ops_demo.sql` | *(marzi)* demo data — hatane ka tareeqa usi file me |
+| `33_ops_ticket_link.sql` | ticket se wapas us jaanch tak |
+| `34_ops_generation_health.sql` | generation sach me chal rahi hai ya nahi |
+| `36_ops_remarks_fix.sql` | remark mitane ka sudhar |
+| `35_ops_tests.sql` | *(marzi)* 15 test — **36 ke BAAD chalaiye** |
+
+`check_status.sql` kabhi bhi chala kar dekh sakte hain ki kaunsi baaki hai.
+
+### Asli kaam par lagane se pehle
+
+1. **Demo data hata dijiye** — `32_ops_demo.sql` ke aakhir me hatane ka
+   poora hissa likha hai. Har demo cheez ka naam `Demo · ` se shuru hota
+   hai, isliye aapka apna data uske saath nahi jaata.
+2. **Role dijiye.** Naye `Server Administrator` role me
+   `can_run_operations` on hai. Jisko checklist banani ho use
+   `can_manage_operations` chahiye.
+3. **Setup page bhariye** — client, device, phir har client ki checklist
+   ("Add from library" se). Iske bina rozana wali checklist khali rahegi.
+4. **pg_cron on kijiye** (Database → Extensions), phir `30` dobara
+   chalaiye. Band ho to checklist sirf tab banti hai jab koi page khole.
+
+### Roz apne aap ban rahi hai ya nahi
+
+`/admin/operations/setup` par sabse upar ek line aati hai. Sab theek ho
+to hari, aur kuch chhoot gaya ho to peeli — usme wo tareekhein likhi
+hoti hain jinki rows kam hain, aur ek button jo unhe bhar deta hai.
+
+Ye poochhna zaroori isliye hai ki generation **chup-chaap** chalti hai.
+Jo row bani hi nahi wo kahin nahi dikhti — na list me, na report me — aur
+mahine ke aakhir me report keh deti hai "us din kuch tha hi nahi".
+
 ## Suraksha kaise kaam karti hai
 
 Yahan koi backend server nahi hai — browser seedha Supabase se baat karta hai. Isliye **poori suraksha database ke andar** hai (Row Level Security).
@@ -160,28 +199,40 @@ src/
     GuestTicket.vue      public form — bina login
     TicketSubmitted.vue  thank-you + token
     Login.vue
+    ForgotPassword.vue   email par code, phir naya password
     admin/
       Dashboard.vue      tickets home par
-      TicketDetail.vue   (abhi khali)
-      Agents.vue         (abhi khali)
+      TicketDetail.vue   ticket + reply + internal note
+      Agents.vue         agent aur role
+      Analytics.vue
+      OperationsToday.vue    rozana wali checklist
+      OperationsSetup.vue    client, device, library, checklist
+      OperationsReports.vue  date range + CSV
+  lib/opsEvidence.ts     saboot chadhana (private bucket)
 supabase/
   01_schema.sql          tables + RLS + functions
+  27..36_ops_*.sql       operations module
+  check_status.sql       kaunsi script chal chuki hai
+  functions/notify/      email bhejne wali Edge Function
 public/
-  _redirects             SPA routing (Cloudflare Pages ke liye zaroori)
+  _redirects             SPA routing (direct URL ke liye zaroori)
 ```
 
 ---
 
-## Cloudflare Pages par deploy
+## Cloudflare par deploy
 
-1. Code GitHub par push kijiye
-2. Cloudflare Pages me repo connect kijiye
-3. Build settings:
-   - **Build command:** `npm run build`
-   - **Output directory:** `dist`
-4. Environment variables me `VITE_SUPABASE_URL` aur `VITE_SUPABASE_ANON_KEY` daaliye
+Site **Cloudflare Workers** par static assets ki tarah jaati hai
+(`wrangler.jsonc` me sab likha hai):
 
-`public/_redirects` pehle se hai — iske bina `/login` par direct jaane par 404 aata.
+```bash
+npm run build
+npx wrangler deploy
+```
+
+`.env` ki keys build ke waqt hi file me chali jaati hain, isliye Cloudflare
+par alag se daalne ki zaroorat nahi. `public/_redirects` pehle se hai —
+iske bina `/login` par seedha jaane par 404 aata.
 
 ---
 
