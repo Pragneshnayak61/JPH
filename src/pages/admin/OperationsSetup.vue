@@ -13,6 +13,81 @@
       </Button>
     </div>
 
+    <!--
+      Roz apne aap ban rahi hai ya nahi.
+
+      Sab theek ho to ek line — dhyan maangna galat hoga. Kuch chhoot
+      gaya ho tabhi ye khulta hai, kyunki tabhi kuch karna hota hai.
+    -->
+    <template v-if="health && health.active_tasks > 0">
+      <div
+        v-if="cronOk && health.days_missing === 0"
+        class="mb-5 flex items-center gap-2 text-p-sm text-ink-gray-6"
+      >
+        <FeatherIcon name="check-circle" class="h-4 w-4 shrink-0 text-ink-green-8" />
+        <span>
+          Checklists are being created automatically every night<span v-if="lastRun">
+            — last run {{ lastRun }}</span
+          >.
+        </span>
+      </div>
+
+      <div
+        v-else
+        class="mb-5 rounded-lg border border-outline-amber-2 bg-surface-amber-1 p-4"
+      >
+        <div class="flex gap-2">
+          <FeatherIcon
+            name="alert-triangle"
+            class="mt-0.5 h-4 w-4 shrink-0 text-ink-amber-9"
+          />
+          <div class="min-w-0 flex-1">
+            <p class="text-p-base font-medium text-ink-gray-8">
+              Checklists are not being created reliably
+            </p>
+
+            <p v-if="!health.pg_cron_on" class="mt-1 text-p-sm text-ink-gray-7">
+              The nightly scheduler (pg_cron) is switched off, so checklists
+              only appear when somebody opens the Operations page. On a day
+              nobody opens it, that day is never recorded.
+            </p>
+            <p
+              v-else-if="health.job_active !== true"
+              class="mt-1 text-p-sm text-ink-gray-7"
+            >
+              The nightly job is missing or paused. Re-run
+              <code>34_ops_generation_health.sql</code> to put it back.
+            </p>
+            <p
+              v-else-if="health.last_run_status && health.last_run_status !== 'succeeded'"
+              class="mt-1 text-p-sm text-ink-gray-7"
+            >
+              The nightly job last finished with “{{ health.last_run_status }}”
+              <span v-if="lastRun">at {{ lastRun }}</span
+              >.
+            </p>
+
+            <p v-if="health.days_missing > 0" class="mt-1 text-p-sm text-ink-gray-7">
+              {{ health.days_missing }} of the last {{ health.days_checked }} days
+              have fewer checks than they should:
+              <span class="font-medium text-ink-gray-8">{{ missingLabel }}</span
+              >.
+            </p>
+
+            <Button
+              v-if="health.days_missing > 0"
+              class="mt-3"
+              :loading="healthBusy"
+              @click="backfill"
+            >
+              <template #prefix><FeatherIcon name="refresh-cw" class="h-4 w-4" /></template>
+              Fill in the missing days
+            </Button>
+          </div>
+        </div>
+      </div>
+    </template>
+
     <!-- tabs -->
     <div class="mb-5 flex gap-1 border-b border-outline-gray-2">
       <button
@@ -700,7 +775,101 @@ async function load() {
     loading.value = false;
   }
 }
-onMounted(load);
+onMounted(() => {
+  load();
+  loadHealth();
+});
+
+// -------------------------------------------------------------- health
+/**
+ * "Checklist roz apne aap ban rahi hai ya nahi" — 34_ops_generation_health.
+ *
+ * Ye sawal SIRF yahan poochhne layak hai. Rozana wali checklist par
+ * poochhne ka koi matlab nahi: wahan jo dikh raha hai wo to ban hi chuka
+ * hai. Jo NAHI bana wo kahin nahi dikhta — na kisi list me, na kisi
+ * report me. Isliye uski khabar alag se leni padti hai.
+ *
+ * Fail hone par chup rehte hain, error nahi dikhate. 34 abhi chalayi na
+ * gayi ho to function hi nahi milega, aur us wajah se poora setup page
+ * ruk jaana galat hoga — client aur device to phir bhi banaye ja sakte
+ * hain.
+ */
+type Health = {
+  pg_cron_on: boolean;
+  job_active: boolean | null;
+  job_schedule: string | null;
+  last_run_at: string | null;
+  last_run_status: string | null;
+  days_checked: number;
+  days_missing: number;
+  missing_dates: string[] | null;
+  active_tasks: number;
+};
+
+const health = ref<Health | null>(null);
+const healthBusy = ref(false);
+
+async function loadHealth() {
+  const { data } = await supabase.rpc("ops_generation_health", { p_days: 14 });
+  health.value = (data as Health[] | null)?.[0] ?? null;
+}
+
+// Cron zinda hai: extension on, job on, aur pichhli baar theek se chala.
+// last_run_at khali bhi ho sakta hai (job abhi laga ho, ya pg_cron ne
+// apna log rakha na ho) — use fail nahi maanate.
+const cronOk = computed(
+  () =>
+    !!health.value?.pg_cron_on &&
+    health.value?.job_active === true &&
+    (health.value?.last_run_status ?? "succeeded") === "succeeded"
+);
+
+const lastRun = computed(() =>
+  health.value?.last_run_at
+    ? new Date(health.value.last_run_at).toLocaleString(undefined, {
+        day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+      })
+    : ""
+);
+
+const missingLabel = computed(() =>
+  (health.value?.missing_dates ?? [])
+    .map((d) =>
+      new Date(d + "T00:00:00").toLocaleDateString(undefined, {
+        day: "numeric", month: "short",
+      })
+    )
+    .join(", ")
+);
+
+/**
+ * Chhoote hue din bharna.
+ *
+ * p_upto jaan-boojh kar nahi bhej rahe — server apna current_date khud
+ * le le. Browser ka din aur database ka din alag ho sakte hain (database
+ * UTC par chalta hai), aur do me se sach hamesha database wala hai.
+ *
+ * 30 din peechhe tak. Ye rows dobara nahi banti — UNIQUE
+ * (client_task_id, due_date) purani rows ko chhoo bhi nahi sakta.
+ */
+async function backfill() {
+  healthBusy.value = true;
+  try {
+    const { data, error: e } = await supabase.rpc("ops_generate_due", {
+      p_back: 30,
+    });
+    if (e) throw e;
+    const n = Number(data ?? 0);
+    toast.success(
+      n > 0 ? `${n} missing check${n === 1 ? "" : "s"} created` : "Nothing was missing"
+    );
+    await loadHealth();
+  } catch (e: any) {
+    toast.error(e?.message || "Could not fill in the missing days");
+  } finally {
+    healthBusy.value = false;
+  }
+}
 
 // -------------------------------------------------------------- client
 const showClient = ref(false);

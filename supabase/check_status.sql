@@ -146,4 +146,24 @@ select '32 — demo data (marzi ki cheez)',
        case when exists (
               select 1 from public.organizations where name like 'Demo · %')
             then 'laga hua hai' else 'nahi laga' end
+union all
+select '33 — ticket se wapas jaanch tak',
+       case when exists (
+              select 1 from pg_proc f
+                join pg_namespace n on n.oid = f.pronamespace
+               where n.nspname = 'public' and f.proname = 'ops_ticket_source')
+            then 'ho gaya' else 'BAAKI HAI' end
+union all
+select '34 — generation ki sehat',
+       case when exists (
+              select 1 from pg_proc f
+                join pg_namespace n on n.oid = f.pronamespace
+               where n.nspname = 'public' and f.proname = 'ops_generation_health')
+            then 'ho gaya' else 'BAAKI HAI' end
+-- "Aaj ki checklist sach me bani ya nahi" — ye sawal yahan JAAN-BOOJH KAR
+-- nahi hai. Uske liye ops_task_executions ko chhoona padta, aur agar 27
+-- chali hi na ho to Postgres poori status script ko padhte waqt hi gira
+-- deta (wahi wajah jo 28 wali line par likhi hai). Wo jawab do jagah
+-- milta hai: 34_ops_generation_health.sql ke aakhir me, aur app me
+-- Operations setup page par sabse upar.
 order by script;
