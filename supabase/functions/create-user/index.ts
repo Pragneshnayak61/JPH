@@ -12,7 +12,15 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
+// PEHLA pata sabse zaroori hai: koi anjaan origin aaye to jawab me wahi
+// jaata hai, aur notify me APP_URL na ho to email ke link bhi usi ke
+// banate hain. Isliye asli domain sabse upar.
+//
+// workers.dev wala purana pata tab tak rehne dijiye jab tak purana
+// Cloudflare account band na ho jaye — beech ke dino me dono jagah se
+// site chalti hai, aur dono se "Add agent" chalna chahiye.
 const ALLOWED_ORIGINS = [
+  "https://helpsdesk.co.in",
   "https://it-helpdesk.vahorajuned858.workers.dev",
   "http://localhost:5173",
 ];

@@ -4,6 +4,19 @@
   "compatibility_date": "2026-08-28",
   "observability": { "enabled": true },
 
+  // Apna domain. `custom_domain: true` hone par wrangler DNS record aur
+  // SSL certificate dono KHUD bana deta hai — dashboard me kuch nahi
+  // karna padta.
+  //
+  // Do shartein, warna deploy yahin fail hota hai:
+  //   1. helpsdesk.co.in USI Cloudflare account me "Active" ho jisme ye
+  //      Worker bana hai (GitHub se jude account me).
+  //   2. Us domain par pehle se koi A/AAAA/CNAME record na ho — wrangler
+  //      kisi maujood record ko khud nahi hatata.
+  "routes": [
+    { "pattern": "helpsdesk.co.in", "custom_domain": true }
+  ],
+
   // Ye ek static site hai — koi Worker code nahi, isliye "main" nahi hai.
   // Cloudflare sirf dist/ ki files serve karta hai.
   "assets": {
