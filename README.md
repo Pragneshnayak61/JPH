@@ -236,6 +236,8 @@ iske bina `/login` par seedha jaane par 404 aata.
 
 ---
 
+new commit
+
 ## Do cheezein jo pata honi chahiye
 
 **1. frappe-ui built package nahi, source bhejta hai.** Isliye `tailwind.config.js` ke `content` me uska path dena zaroori hai, warna uske components ki classes CSS me aayengi hi nahi aur design toota dikhega.
