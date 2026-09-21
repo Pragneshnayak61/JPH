@@ -9,3 +9,13 @@ dist
 
 # Cloudflare wrangler
 .wrangler
+
+# Supabase CLI ki apni cheezein — project ref, org id, CLI version.
+# Ye har machine ki alag hoti hain aur repo me aane ka koi matlab nahi.
+supabase/.temp/
+
+# Asli data, code nahi. Isme clients ke naam aur unke server ke kaam
+# (password badalna, VNC, backup) likhe hain — public repo me ye kisi
+# ko bhi bata dete ki kis client par kya kamzori thi. File is computer
+# par rehti hai, sirf GitHub se hati hai.
+supabase/14_import_tasks.sql
